@@ -1,0 +1,5 @@
+.venv
+*.swp
+*.swo
+*.pyc
+.coverage

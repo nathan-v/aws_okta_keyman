@@ -1,0 +1,8 @@
+bs4>=0.0.1
+rainbow-logging-handler>=2.2.2
+requests>=2.18.1
+urllib3>=1.21.1
+boto3>=1.4.4
+
+# TODO: Explain
+aws_role_credentials==0.6.3
