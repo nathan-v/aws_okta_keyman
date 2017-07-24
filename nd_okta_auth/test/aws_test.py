@@ -1,3 +1,4 @@
+import datetime
 import unittest
 import mock
 
@@ -59,3 +60,43 @@ class TestCredentials(unittest.TestCase):
             mock.call('/test', 'r'),
             mock.call('/test', 'w+')
         ])
+
+
+class TestSesssion(unittest.TestCase):
+
+    @mock.patch('aws_role_credentials.models.SamlAssertion')
+    def setUp(self, mock_saml):
+        self.fake_assertion = mock.MagicMock(name='FakeAssertion')
+        mock_saml.return_value = self.fake_assertion
+
+    def test_is_valid_false(self):
+        session = aws.Session('BogusAssertion')
+
+        # Mock out the expiration time to 4:10PM UTC
+        expir_mock = datetime.datetime(2017, 7, 25, 16, 10, 00, 000000)
+        # Now set our current time to 4:05PM UTC
+        mock_now = datetime.datetime(2017, 7, 25, 16, 4, 00, 000000)
+
+        # Should return False - less than 600 seconds away from expiration
+        with mock.patch('datetime.datetime') as dt_mock:
+            dt_mock.utcnow.return_value = mock_now
+            dt_mock.strptime.return_value = expir_mock
+            ret = session.is_valid
+
+        self.assertEquals(False, ret)
+
+    def test_is_valid_true(self):
+        session = aws.Session('BogusAssertion')
+
+        # Mock out the expiration time to 4:10PM UTC
+        expir_mock = datetime.datetime(2017, 7, 25, 16, 10, 00, 000000)
+        # Now set our current time to 3:55PM UTC
+        mock_now = datetime.datetime(2017, 7, 25, 15, 55, 00, 000000)
+
+        # Should return False - less than 600 seconds away from expiration
+        with mock.patch('datetime.datetime') as dt_mock:
+            dt_mock.utcnow.return_value = mock_now
+            dt_mock.strptime.return_value = expir_mock
+            ret = session.is_valid
+
+        self.assertEquals(True, ret)

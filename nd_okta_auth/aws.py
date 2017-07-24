@@ -13,6 +13,7 @@ Thought Works Inc.
 
 import boto3
 import configparser
+import datetime
 import logging
 import os
 import xml
@@ -114,8 +115,40 @@ class Session(object):
 
         self.profile = profile
         self.region = region
+
         self.assertion = models.SamlAssertion(assertion)
-        self.credentials = Credentials(cred_file)
+        self.writer = Credentials(cred_file)
+
+        # Populated by self.assume_role()
+        self.aws_access_key_id = None
+        self.aws_secret_access_key = None
+        self.aws_session_token = None
+        self.expiration = None
+
+    @property
+    def is_valid(self):
+        '''Returns True if the Session is still valid.
+
+        Takes the current time (in UTC) and compares it to the Expiration time
+        returned by Amazon. Adds a 10 minute buffer to make sure that we start
+        working to renew the creds far before they really expire and break.
+
+        Args:
+            now: A datetime.datetime() object (likely
+            datetime.datetime.utcnow())
+            buffer: Number of seconds before the actual expiration before we
+            start returning false.
+
+        Returns:
+            Bool
+        '''
+        # Consider the tokens expired when they have 10m left
+        buffer = datetime.timedelta(seconds=600)
+        now = datetime.datetime.utcnow()
+        expir = datetime.datetime.strptime(str(self.expiration),
+                                           '%Y-%m-%d %H:%M:%S+00:00')
+
+        return (now + buffer) < expir
 
     def assume_role(self):
         '''Use the SAML Assertion to actually get the credentials.
@@ -131,24 +164,26 @@ class Session(object):
             log.error(self.assertion.__dict__)
             raise InvalidSaml()
 
-        creds = self.sts.assume_role_with_saml(
+        session = self.sts.assume_role_with_saml(
             RoleArn=role['role'],
             PrincipalArn=role['principle'],
             SAMLAssertion=self.assertion.encode())
-        self._write(creds['Credentials'])
+        creds = session['Credentials']
 
-    def _write(self, creds):
-        '''Take in supplied credentials and write them to disk.
+        self.aws_access_key_id = creds['AccessKeyId']
+        self.aws_secret_access_key = creds['SecretAccessKey']
+        self.session_token = creds['SessionToken']
+        self.expiration = creds['Expiration']
 
-        Creds:
-            A dictionary of values returned to us by Boto - should have
-            AccessKeyId, SecretAccessKey and SessionToken keys.
-        '''
-        self.credentials.add_profile(
+        self._write()
+
+    def _write(self):
+        '''Writes out our secrets to the Credentials object'''
+        self.writer.add_profile(
             name=self.profile,
             region=self.region,
-            access_key=creds['AccessKeyId'],
-            secret_key=creds['SecretAccessKey'],
-            session_token=creds['SessionToken'])
+            access_key=self.aws_access_key_id,
+            secret_key=self.aws_secret_access_key,
+            session_token=self.session_token)
         log.info('Session expires at {time}'.format(
-            time=creds['Expiration']))
+            time=self.expiration))
