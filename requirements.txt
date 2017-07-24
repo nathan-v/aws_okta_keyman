@@ -1,7 +1,6 @@
 bs4>=0.0.1
 rainbow-logging-handler>=2.2.2
 requests>=2.10.0
-urllib3
 boto3>=1.4.0
 
 # TODO: Explain
