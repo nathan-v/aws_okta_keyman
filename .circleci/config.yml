@@ -1,0 +1,29 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/python:2.7
+    steps:
+      - checkout
+      - run:
+          name: install dependencies
+          command: |
+            virtualenv venv
+            . venv/bin/activate
+            pip install -r requirements.txt
+            pip install -r requirements.test.txt
+      - run:
+          name: run tests
+          command: |
+            . venv/bin/activate
+            nosetests -vv --with-coverage --cover-erase --cover-package=nd_okta_auth
+      - run:
+          name: pep8
+          command: |
+            . venv/bin/activate
+            python setup.py pep8
+      - run:
+          name: pyflakes
+          command: |
+            . venv/bin/activate
+            python setup.py pyflakes

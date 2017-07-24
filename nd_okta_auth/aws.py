@@ -15,6 +15,7 @@ import boto3
 import configparser
 import logging
 import os
+import xml
 
 from os.path import expanduser
 
@@ -23,7 +24,21 @@ from aws_role_credentials import models
 log = logging.getLogger(__name__)
 
 
-class Profile(object):
+class BaseException(Exception):
+    '''Base AWS SAML Exception'''
+
+
+class InvalidSaml(BaseException):
+    '''Raised when the SAML Assertion is invalid for some reason'''
+
+
+class Credentials(object):
+
+    '''Simple AWS Credentials Profile representation.
+
+    This object reads in an Amazon ~/.aws/credentials file, and then allows you
+    to write out credentials into different Profile sections.
+    '''
 
     def __init__(self, filename):
         self.filename = filename
@@ -32,7 +47,7 @@ class Profile(object):
         config = configparser.ConfigParser(interpolation=None)
         try:
             config.read_file(open(self.filename, 'r'))
-        except:
+        except IOError:
             pass
 
         if not config.has_section(name):
@@ -43,6 +58,15 @@ class Profile(object):
             config.write(configfile)
 
     def add_profile(self, name, region, access_key, secret_key, session_token):
+        '''Writes out a set of AWS Credentials to disk.
+
+        args:
+            name: The profile name to write to
+            region: The region to use as the default region for this profile
+            access_key: The AWS_ACCESS_KEY_ID
+            secret_key: The AWS_SECRET_ACCESS_KEY
+            session_token: The AWS_SESSION_TOKEN
+        '''
         name = unicode(name)
         self._add_profile(
             name,
@@ -58,7 +82,17 @@ class Profile(object):
             name=name, file=self.filename))
 
 
-class Credentials(object):
+class Session(object):
+
+    '''Amazon Federated Session Generator.
+
+    This class is used to contact Amazon with a specific SAML Assertion and
+    get back a set of temporary Federated credentials. These credentials are
+    written to disk (using the Credentials object above).
+
+    This object is meant to be used once -- as SAML Assertions are one-time-use
+    objects.
+    '''
 
     def __init__(self,
                  assertion,
@@ -67,6 +101,9 @@ class Credentials(object):
                  region='us-east-1'):
         cred_dir = expanduser(credential_path)
         cred_file = os.path.join(cred_dir, 'credentials')
+
+        boto_logger = logging.getLogger('botocore')
+        boto_logger.setLevel(logging.WARNING)
 
         if not os.path.exists(cred_dir):
             log.info('Creating missing AWS Credentials dir {dir}'.format(
@@ -78,10 +115,22 @@ class Credentials(object):
         self.profile = profile
         self.region = region
         self.assertion = models.SamlAssertion(assertion)
-        self.credentials = Profile(cred_file)
+        self.credentials = Credentials(cred_file)
 
-    def assume_role_with_saml(self):
-        role = self.assertion.roles()[0]
+    def assume_role(self):
+        '''Use the SAML Assertion to actually get the credentials.
+
+        Uses the supplied (one time use!) SAML Assertion to go out to Amazon
+        and get back a set of temporary credentials. These are written out to
+        disk and can be used for an hour before they need to be replaced.
+        '''
+        try:
+            role = self.assertion.roles()[0]
+        except xml.etree.ElementTree.ParseError:
+            log.error('Could not find any Role in the SAML assertion')
+            log.error(self.assertion.__dict__)
+            raise InvalidSaml()
+
         creds = self.sts.assume_role_with_saml(
             RoleArn=role['role'],
             PrincipalArn=role['principle'],
@@ -89,6 +138,12 @@ class Credentials(object):
         self._write(creds['Credentials'])
 
     def _write(self, creds):
+        '''Take in supplied credentials and write them to disk.
+
+        Creds:
+            A dictionary of values returned to us by Boto - should have
+            AccessKeyId, SecretAccessKey and SessionToken keys.
+        '''
         self.credentials.add_profile(
             name=self.profile,
             region=self.region,

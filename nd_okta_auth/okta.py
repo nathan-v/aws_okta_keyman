@@ -16,6 +16,8 @@ import requests
 
 log = logging.getLogger(__name__)
 
+BASE_URL = 'https://{organization}.okta.com'
+
 
 class BaseException(exceptions.Exception):
     '''Base Exception for Okta Auth'''
@@ -47,19 +49,28 @@ class OktaVerifyRequired(BaseException):
 
 class Okta(object):
 
-    url = '/app/{app}/{appid}/sso/saml'
+    '''Base Okta Login Object with MFA handling.
 
-    def __init__(self, server, username, password):
-        self.base_url = 'https://{server}'.format(server=server)
+    This base login object handles connecting to Okta, authenticating a user,
+    and optionally triggering MFA Authentication. No application specific logic
+    is here, just the initial authentication and creation of a
+    cookie-authenticated requests.Session() object.
+
+    See OktaSaml for a more useful object.
+    '''
+
+    def __init__(self, organization, username, password):
+        self.base_url = BASE_URL.format(organization=organization)
         log.debug('Base URL Set to: {url}'.format(url=self.base_url))
 
         # Validate the inputs are reasonably sane
-        for input in (server, username, password):
+        for input in (organization, username, password):
             if (input == '' or input is None):
                 raise EmptyInput()
 
         self.username = username
         self.password = password
+        self.session = requests.Session()
 
     def _request(self, path, data=None):
         '''Basic URL Fetcher for Okta
@@ -82,7 +93,8 @@ class Okta(object):
         else:
             url = '{base}/api/v1{path}'.format(base=self.base_url, path=path)
 
-        resp = requests.post(url=url, headers=headers, json=data)
+        resp = self.session.post(url=url, headers=headers, json=data,
+                                 allow_redirects=False)
 
         resp_obj = resp.json()
         log.debug(resp_obj)
@@ -141,7 +153,21 @@ class Okta(object):
         self.set_token(ret)
         return True
 
-    def _okta_verify(self, fid, state_token):
+    def okta_verify_with_push(self, fid, state_token, sleep=1):
+        '''Triggers an Okta Push Verification and waits.
+
+        This metho is meant to be called by self.auth() if a Login session
+        requires MFA, and the users profile supports Okta Push with Verify.
+
+        We trigger the push, and then immediately go into a wait loop. Each
+        time we loop around, we pull the latest status for that push event. If
+        its Declined, we will throw an error. If its accepted, we write out our
+        SessionToken.
+
+        Args:
+            fid: Okta Factor ID used to trigger the push
+            state_token: State Token allowing us to trigger the push
+        '''
         log.warning('Okta Verify Push being sent...')
         path = '/authn/factors/{fid}/verify'.format(fid=fid)
         data = {'fid': fid,
@@ -150,13 +176,13 @@ class Okta(object):
 
         while ret['status'] != 'SUCCESS':
             log.info('Waiting for Okta Verification...')
-            time.sleep(1)
+            time.sleep(sleep)
 
             if ret.get('factorResult', 'REJECTED') == 'REJECTED':
                 log.error('Okta Verify Push REJECTED')
                 return False
 
-            links = ret.get('_links', {})
+            links = ret.get('_links')
             ret = self._request(links['next']['href'], data)
 
         self.set_token(ret)
@@ -165,8 +191,21 @@ class Okta(object):
     def auth(self):
         '''Performs an initial authentication against Okta.
 
-        This either returns a successful and useful SessionToken, or it raises
-        an appropriate exception (for example, if MFA is required).
+        The initial Okta Login authentication is handled here - and optionally
+        MFA authentication is triggered. If successful, this method stores a
+        SessionToken. This SessionToken can be used to initiate a call to the
+        "Embed Link" of an Okta Application.
+
+        **Note ... Undocumented/Unclear Okta Behavior**
+        If you use the SessionToken only to make your subsequent requests, its
+        usable only once and then it expires. However, if you combine it with a
+        long-lived SID cookie (which we do, by using reqests.Session() to make
+        all of our web requests), then that SessionToken can be redeemd many
+        times as long as you do it through the "Embed Links". See the OktaSaml
+        client for an example.
+
+            https://developer.okta.com/use_cases/authentication/
+            session_cookie#visit-an-embed-link-with-the-session-token
         '''
         path = '/authn'
         data = {'username': self.username,
@@ -181,6 +220,7 @@ class Okta(object):
 
         if status == 'SUCCESS':
             self.set_token(ret)
+            return
 
         if status == 'MFA_ENROLL' or status == 'MFA_ENROLL_ACTIVATE':
             log.warning('User {u} needs to enroll in 2FA first'.format(
@@ -190,7 +230,8 @@ class Okta(object):
         if status == 'MFA_REQUIRED' or status == 'MFA_CHALLENGE':
             for factor in ret['_embedded']['factors']:
                 if factor['factorType'] == 'push':
-                    if self._okta_verify(factor['id'], ret['stateToken']):
+                    if self.okta_verify_with_push(factor['id'],
+                                                  ret['stateToken']):
                         return
 
             for factor in ret['_embedded']['factors']:
@@ -210,13 +251,14 @@ class OktaSaml(Okta):
         for inputtag in soup.find_all('input'):
             if inputtag.get('name') == 'SAMLResponse':
                 assertion = inputtag.get('value')
-
         return base64.b64decode(assertion)
 
     def get_assertion(self, appid, apptype):
-        path = '{url}/app/{apptype}/{appid}/sso/saml'.format(
+        path = '{url}/home/{apptype}/{appid}'.format(
             url=self.base_url, apptype=apptype, appid=appid)
-        resp = requests.get(path, params={'onetimetoken': self.session_token})
+        resp = self.session.get(path,
+                                params={'onetimetoken': self.session_token})
+        log.debug(resp.__dict__)
 
         try:
             resp.raise_for_status()
