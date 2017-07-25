@@ -99,10 +99,10 @@ def get_config_parser(argv):
                                    'so be careful here!'
                                ),
                                default=False)
-    optional_args.add_argument('-r', '--reup', type=int,
+    optional_args.add_argument('-r', '--reup', action='store_true',
                                help=(
-                                   'Automatically re-up the AWS creds every'
-                                   'xx seconds.'
+                                   'Automatically re-up the AWS creds before'
+                                   'they expire.'
                                ), default=0)
     optional_args.add_argument('-n', '--name', type=str,
                                help='AWS Profile Name', default='default')
@@ -140,7 +140,8 @@ def main(argv):
     try:
         okta_client.auth()
     except okta.InvalidPassword:
-        log.error('Invalid Username or Password')
+        log.error('Invalid Username ({user}) or Password'.format(
+                  user=config.username))
         sys.exit(1)
     except okta.PasscodeRequired as e:
         log.warning('MFA Requirement Detected - Enter your passcode here')
@@ -152,29 +153,35 @@ def main(argv):
     # Once we're authenticated with an OktaSaml client object, we can use that
     # object to get a fresh SAMLResponse repeatedly and refresh our AWS
     # Credentials.
+    session = None
     while True:
+        # If an AWS Session object has been created already, lets check if its
+        # still valid. If it is, sleep a bit and skip to the next execution of
+        # the loop.
+        if session and session.is_valid:
+            log.debug('Credentials are still valid, sleepingt')
+            time.sleep(15)
+            continue
+
         log.info('Getting SAML Assertion from {org}'.format(
             org=config.org))
-        assertion = okta_client.get_assertion(appid=config.appid,
-                                              apptype='amazon_aws')
-
-        # With the fresh SAML Assertion, go to Amazon and get new creds. Write
-        # them out to our profile.
-        creds = aws.Session(assertion, profile=config.name)
 
         try:
-            creds.assume_role()
-            if config.reup < 1:
-                break
-            time.sleep(config.reup)
-        except requests.exceptions.ConnectionError:
-            log.error('Exception in Conn')
-            log.error(e)
-        except aws.BaseException as e:
-            log.error('Exception in SAML Assertion')
-            log.error(e)
-        finally:
+            assertion = okta_client.get_assertion(appid=config.appid,
+                                                  apptype='amazon_aws')
+            session = aws.Session(assertion, profile=config.name)
+            session.assume_role()
+        except requests.exceptions.ConnectionError as e:
+            log.warning('Connection error... will retry')
             time.sleep(5)
+            continue
+
+        # If we're not running in re-up mode, once we have the assertion
+        # and creds, go ahead and quit.
+        if not config.reup:
+            break
+
+        time.sleep(5)
 
 
 def entry_point():
