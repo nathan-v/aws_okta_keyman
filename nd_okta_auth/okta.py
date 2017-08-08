@@ -263,7 +263,8 @@ class OktaSaml(Okta):
         try:
             resp.raise_for_status()
         except requests.exceptions.HTTPError as e:
-            log.error('Unknown error: {msg}'.format(msg=str(e.response.__dict__)))
+            log.error('Unknown error: {msg}'.format(
+                msg=str(e.response.__dict__)))
             raise UnknownError()
 
         return self.assertion(resp.text.decode('utf8'))
