@@ -147,7 +147,7 @@ def main(argv):
         log.warning('MFA Requirement Detected - Enter your passcode here')
         verified = False
         while not verified:
-            passcode = getpass.getpass('MFA Passcode: ')
+            passcode = raw_input('MFA Passcode: ')
             verified = okta_client.validate_mfa(e.fid, e.state_token, passcode)
 
     # Once we're authenticated with an OktaSaml client object, we can use that
