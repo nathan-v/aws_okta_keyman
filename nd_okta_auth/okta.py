@@ -230,9 +230,13 @@ class Okta(object):
         if status == 'MFA_REQUIRED' or status == 'MFA_CHALLENGE':
             for factor in ret['_embedded']['factors']:
                 if factor['factorType'] == 'push':
-                    if self.okta_verify_with_push(factor['id'],
-                                                  ret['stateToken']):
-                        return
+                    try:
+                        if self.okta_verify_with_push(factor['id'],
+                                                      ret['stateToken']):
+                            return
+                    except KeyboardInterrupt:
+                        # Allow users to use MFA Passcode by breaking out of waiting for the push.
+                        break
 
             for factor in ret['_embedded']['factors']:
                 if factor['factorType'] == 'token:software:totp':
