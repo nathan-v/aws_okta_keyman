@@ -7,9 +7,10 @@ from nd_okta_auth import aws
 
 class TestCredentials(unittest.TestCase):
 
+    @mock.patch('nd_okta_auth.aws.os.chmod')
     @mock.patch('configparser.ConfigParser')
     @mock.patch('nd_okta_auth.aws.open')
-    def test_add_profile(self, open_mock, parser_mock):
+    def test_add_profile(self, open_mock, parser_mock, chmod_mock):
         fake_parser = mock.MagicMock(name='config_parser')
         parser_mock.return_value = fake_parser
 
@@ -35,11 +36,13 @@ class TestCredentials(unittest.TestCase):
             mock.call.set(u'TestProfile', u'aws_access_key_id', u'key')
         ])
 
+    @mock.patch('nd_okta_auth.aws.os.chmod')
     @mock.patch('configparser.ConfigParser')
     @mock.patch('nd_okta_auth.aws.open')
     def test_add_profile_missing_file_creates_new(self,
                                                   open_mock,
-                                                  parser_mock):
+                                                  parser_mock,
+                                                  chmod_mock):
         fake_parser = mock.MagicMock(name='config_parser')
         parser_mock.return_value = fake_parser
 
@@ -59,6 +62,11 @@ class TestCredentials(unittest.TestCase):
         open_mock.assert_has_calls([
             mock.call('/test', 'r'),
             mock.call('/test', 'w+')
+        ])
+
+        # Verify we're setting the file permissions as 0600 for safety
+        chmod_mock.assert_has_calls([
+            mock.call('/test', 0o600)
         ])
 
 

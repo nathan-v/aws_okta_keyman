@@ -56,6 +56,7 @@ class Credentials(object):
 
         [(config.set(name, k, v)) for k, v in profile.items()]
         with open(self.filename, 'w+') as configfile:
+            os.chmod(self.filename, 0o600)
             config.write(configfile)
 
     def add_profile(self, name, region, access_key, secret_key, session_token):
