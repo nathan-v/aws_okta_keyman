@@ -235,7 +235,8 @@ class Okta(object):
                                                       ret['stateToken']):
                             return
                     except KeyboardInterrupt:
-                        # Allow users to use MFA Passcode by breaking out of waiting for the push.
+                        # Allow users to use MFA Passcode by
+                        # breaking out of waiting for the push.
                         break
 
             for factor in ret['_embedded']['factors']:
