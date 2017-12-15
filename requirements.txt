@@ -2,6 +2,5 @@ bs4>=0.0.1
 rainbow-logging-handler>=2.2.2
 requests>=2.10.0
 boto3>=1.4.0
-
-# TODO: Explain
-aws_role_credentials==0.6.3
+future==0.16.0
+configparser==3.5.0

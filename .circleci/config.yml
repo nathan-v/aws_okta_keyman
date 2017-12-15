@@ -1,6 +1,13 @@
 version: 2
+workflows:
+  version: 2
+  test:
+    jobs:
+      - test-3.6
+      - test-3.5
+      - test-2.7
 jobs:
-  build:
+  test-2.7: &test-template
     docker:
       - image: circleci/python:2.7
     steps:
@@ -8,7 +15,7 @@ jobs:
       - run:
           name: install dependencies
           command: |
-            virtualenv venv
+            python -m venv venv || virtualenv venv
             . venv/bin/activate
             pip install -r requirements.txt
             pip install -r requirements.test.txt
@@ -27,3 +34,11 @@ jobs:
           command: |
             . venv/bin/activate
             python setup.py pyflakes
+  test-3.5:
+    <<: *test-template
+    docker:
+      - image: circleci/python:3.5
+  test-3.6:
+    <<: *test-template
+    docker:
+      - image: circleci/python:3.6

@@ -6,24 +6,26 @@ Handles the initial Okta authentication - throws appropriate errors in the
 events of bad passwords, MFA requirements, etc.
 '''
 
+from __future__ import unicode_literals
 import base64
-import exceptions
 import logging
 import time
-
+import sys
 import bs4
 import requests
+if sys.version_info[0] < 3:  # Python 2
+    from exceptions import Exception
 
 log = logging.getLogger(__name__)
 
 BASE_URL = 'https://{organization}.okta.com'
 
 
-class BaseException(exceptions.Exception):
+class BaseException(Exception):
     '''Base Exception for Okta Auth'''
 
 
-class UnknownError(exceptions.Exception):
+class UnknownError(Exception):
     '''Some Expected Return Was Received'''
 
 
@@ -65,7 +67,7 @@ class Okta(object):
 
         # Validate the inputs are reasonably sane
         for input in (organization, username, password):
-            if (input == '' or input is None):
+            if input == '' or input is None:
                 raise EmptyInput()
 
         self.username = username
@@ -272,4 +274,4 @@ class OktaSaml(Okta):
                 msg=str(e.response.__dict__)))
             raise UnknownError()
 
-        return self.assertion(resp.text.decode('utf8'))
+        return self.assertion(resp.text)

@@ -14,18 +14,25 @@
 #
 # Copyright 2017 Nextdoor.com, Inc
 
+from __future__ import unicode_literals
 import argparse
 import getpass
 import logging
 import sys
 import time
 import requests
+from builtins import input
 
 import rainbow_logging_handler
 
 from nd_okta_auth import okta
 from nd_okta_auth import aws
 from nd_okta_auth.metadata import __desc__, __version__
+
+
+def user_input(text):
+    '''Wraps input() making testing support of py2 and py3 easier'''
+    input(text)
 
 
 def setup_logging():
@@ -147,7 +154,7 @@ def main(argv):
         log.warning('MFA Requirement Detected - Enter your passcode here')
         verified = False
         while not verified:
-            passcode = raw_input('MFA Passcode: ')
+            passcode = user_input('MFA Passcode: ')
             verified = okta_client.validate_mfa(e.fid, e.state_token, passcode)
 
     # Once we're authenticated with an OktaSaml client object, we can use that

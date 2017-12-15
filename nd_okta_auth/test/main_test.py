@@ -1,9 +1,13 @@
+from __future__ import unicode_literals
 import unittest
-import mock
 import logging
-
+import sys
 from nd_okta_auth import main
 from nd_okta_auth import okta
+if sys.version_info[0] < 3:  # Python 2
+    import mock
+else:
+    from unittest import mock
 
 
 class MainTest(unittest.TestCase):
@@ -57,19 +61,17 @@ class MainTest(unittest.TestCase):
 
         okta_mock.assert_called_with('server', 'username', 'test_password')
 
+    @mock.patch('nd_okta_auth.main.user_input')
     @mock.patch('nd_okta_auth.aws.Session')
     @mock.patch('nd_okta_auth.okta.OktaSaml')
     @mock.patch('nd_okta_auth.main.get_config_parser')
     @mock.patch('getpass.getpass')
-    @mock.patch('__builtin__.raw_input')
-    def test_entry_point_mfa(self, raw_input_mock, pass_mock, config_mock,
-                             okta_mock, aws_mock):
-        # Call to getpass is the password.
-        pass_mock.return_value = 'test_password'
-
-        # First call to raw_input is the mistyped passcode.
-        # Second call is the valid passcode.
-        raw_input_mock.side_effect = ['123', '123456']
+    def test_entry_point_mfa(self, pass_mock, config_mock,
+                             okta_mock, aws_mock, input_mock):
+        # First call to this is the password. Second call is the mis-typed
+        # passcode. Third call is a valid passcode.
+        pass_mock.side_effect = ['test_password']
+        input_mock.side_effect = ['123', '123456']
 
         # Just mock out the entire Okta object, we won't really instantiate it
         fake_okta = mock.MagicMock(name='OktaSaml')
@@ -96,15 +98,9 @@ class MainTest(unittest.TestCase):
 
         main.main('test')
 
-        # Ensure that getpass was called for the password.
-        pass_mock.assert_called_with()
-
-        # Ensure that raw_input was called twice for the passcode,
-        # once after the okta.PasscodeRequired exception was thrown,
-        # and once after the passcode was found to be invalid.
-        self.assertEqual(raw_input_mock.mock_calls, [
-            mock.call('MFA Passcode: '),
-            mock.call('MFA Passcode: '),
+        # Ensure that getpass was called once for the password
+        pass_mock.assert_has_calls([
+            mock.call(),
         ])
 
         # Ensure that we called auth, then called validate_mfa() twice - each
@@ -114,6 +110,13 @@ class MainTest(unittest.TestCase):
             mock.call.auth(),
             mock.call.validate_mfa('test_factor_id', 'test_token', '123'),
             mock.call.validate_mfa('test_factor_id', 'test_token', '123456'),
+        ])
+
+        # Ensure that user_input was called twice; once for the bad input and
+        # once for the retry
+        input_mock.assert_has_calls([
+            mock.call('MFA Passcode: '),
+            mock.call('MFA Passcode: '),
         ])
 
     @mock.patch('nd_okta_auth.okta.OktaSaml')

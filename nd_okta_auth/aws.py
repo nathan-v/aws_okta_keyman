@@ -11,16 +11,17 @@ modified from the original code, but thanks a ton to the original writers at
 Thought Works Inc.
 '''
 
-import boto3
+from __future__ import unicode_literals
+from builtins import str
 import configparser
 import datetime
 import logging
 import os
+from os.path import expanduser
 import xml
 
-from os.path import expanduser
-
-from aws_role_credentials import models
+import boto3
+from nd_okta_auth.aws_saml import SamlAssertion
 
 log = logging.getLogger(__name__)
 
@@ -69,15 +70,15 @@ class Credentials(object):
             secret_key: The AWS_SECRET_ACCESS_KEY
             session_token: The AWS_SESSION_TOKEN
         '''
-        name = unicode(name)
+        name = str(name)
         self._add_profile(
             name,
-            {u'output': u'json',
-             u'region': unicode(region),
-             u'aws_access_key_id': unicode(access_key),
-             u'aws_secret_access_key': unicode(secret_key),
-             u'aws_security_token': unicode(session_token),
-             u'aws_session_token': unicode(session_token)
+            {'output': 'json',
+             'region': str(region),
+             'aws_access_key_id': str(access_key),
+             'aws_secret_access_key': str(secret_key),
+             'aws_security_token': str(session_token),
+             'aws_session_token': str(session_token)
              })
 
         log.info('Wrote profile "{name}" to {file}'.format(
@@ -117,7 +118,7 @@ class Session(object):
         self.profile = profile
         self.region = region
 
-        self.assertion = models.SamlAssertion(assertion)
+        self.assertion = SamlAssertion(assertion)
         self.writer = Credentials(cred_file)
 
         # Populated by self.assume_role()

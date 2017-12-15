@@ -1,75 +1,80 @@
+from __future__ import unicode_literals
 import unittest
-import mock
 import requests
-
+import sys
 from nd_okta_auth import okta
+if sys.version_info[0] < 3:  # Python 2
+    import mock
+else:
+    from unittest import mock
+
 
 # Successful response message from Okta when you have fully logged in
 SUCCESS_RESPONSE = {
-    u'status': u'SUCCESS',
-    u'expiresAt': u'2017-07-24T17:05:59.000Z',
-    u'_embedded': {
-        u'user': {
-            u'profile': {
-                u'locale': u'en',
-                u'lastName': u'Foo',
-                u'login': u'bob@foobar.com',
-                u'firstName': u'Bob', u'timeZone':
-                u'America/Los_Angeles'},
-            u'id': u'XXXIDXXX'
+    'status': 'SUCCESS',
+    'expiresAt': '2017-07-24T17:05:59.000Z',
+    '_embedded': {
+        'user': {
+            'profile': {
+                'locale': 'en',
+                'lastName': 'Foo',
+                'login': 'bob@foobar.com',
+                'firstName': 'Bob', 'timeZone':
+                'America/Los_Angeles'},
+            'id': 'XXXIDXXX'
         }
     },
-    u'sessionToken': u'XXXTOKENXXX'}
+    'sessionToken': 'XXXTOKENXXX'}
 
 # Miniaturized versions of the Okta response objects... they are too large to
 # really store here, and its not necessary.
 MFA_ENROLL_RESPONSE = {
-    u'status': u'MFA_ENROLL',
-    u'stateToken': 'token',
+    'status': 'MFA_ENROLL',
+    'stateToken': 'token',
 }
 MFA_CHALLENGE_RESPONSE_OKTA_VERIFY = {
-    u'status': u'MFA_REQUIRED',
-    u'_embedded': {
-        u'factors': [
+    'status': 'MFA_REQUIRED',
+    '_embedded': {
+        'factors': [
             {
-                u'factorType': 'push',
-                u'id': 'abcd',
+                'factorType': 'push',
+                'id': 'abcd',
             }
         ]
     },
-    u'stateToken': 'token',
+    'stateToken': 'token',
 }
 MFA_CHALLENGE_RESPONSE_PASSCODE = {
-    u'status': u'MFA_REQUIRED',
-    u'_embedded': {
-        u'factors': [
+    'status': 'MFA_REQUIRED',
+    '_embedded': {
+        'factors': [
             {
-                u'factorType': 'token:software:totp',
-                u'id': 'abcd',
+                'factorType': 'token:software:totp',
+                'id': 'abcd',
             }
         ]
     },
-    u'stateToken': 'token',
+    'stateToken': 'token',
 }
 MFA_WAITING_RESPONSE = {
-    u'status': u'MFA_CHALLENGE',
-    u'factorResult': u'WAITING',
-    u'_links': {
-        u'next': {
-            u'href': u'https://foobar.okta.com/api/v1/authn/factors/X/verify',
+    'status': 'MFA_CHALLENGE',
+    'factorResult': 'WAITING',
+    '_links': {
+        'next': {
+            'href': 'https://foobar.okta.com/api/v1/authn/factors/X/verify',
         }
     },
-    u'stateToken': 'token',
+    'stateToken': 'token',
 }
 MFA_REJECTED_RESPONSE = {
-    u'status': u'MFA_CHALLENGE',
-    u'factorResult': u'REJECTED',
-    u'_links': {
-        u'next': {
-            u'href': u'https://foobar.okta.com/api/v1/authn/factors/X/verify',
+    'status': 'MFA_CHALLENGE',
+    'factorResult': 'REJECTED',
+    '_links': {
+        'next': {
+            'href': 'https://foobar.okta.com/api/v1/authn/factors/X/verify',
         }
     },
-    u'stateToken': 'token',
+    'stateToken': 'token',
 }
 
 

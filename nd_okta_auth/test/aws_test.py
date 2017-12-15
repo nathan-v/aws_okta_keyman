@@ -1,8 +1,12 @@
+from __future__ import unicode_literals
 import datetime
 import unittest
-import mock
-
+import sys
 from nd_okta_auth import aws
+if sys.version_info[0] < 3:  # Python 2
+    import mock
+else:
+    from unittest import mock
 
 
 class TestCredentials(unittest.TestCase):
@@ -26,15 +30,15 @@ class TestCredentials(unittest.TestCase):
             session_token='token')
 
         fake_parser.assert_has_calls([
-            mock.call.has_section(u'TestProfile'),
-            mock.call.add_section(u'TestProfile'),
-            mock.call.set(u'TestProfile', u'region', u'us-east-1'),
-            mock.call.set(u'TestProfile', u'aws_session_token', u'token'),
-            mock.call.set(u'TestProfile', u'aws_security_token', u'token'),
-            mock.call.set(u'TestProfile', u'aws_secret_access_key', u'secret'),
-            mock.call.set(u'TestProfile', u'output', u'json'),
-            mock.call.set(u'TestProfile', u'aws_access_key_id', u'key')
-        ])
+            mock.call.has_section('TestProfile'),
+            mock.call.add_section('TestProfile'),
+            mock.call.set('TestProfile', 'region', 'us-east-1'),
+            mock.call.set('TestProfile', 'aws_session_token', 'token'),
+            mock.call.set('TestProfile', 'aws_security_token', 'token'),
+            mock.call.set('TestProfile', 'aws_secret_access_key', 'secret'),
+            mock.call.set('TestProfile', 'output', 'json'),
+            mock.call.set('TestProfile', 'aws_access_key_id', 'key')
+        ], any_order=True)
 
     @mock.patch('nd_okta_auth.aws.os.chmod')
     @mock.patch('configparser.ConfigParser')
@@ -72,7 +76,7 @@ class TestCredentials(unittest.TestCase):
 
 class TestSesssion(unittest.TestCase):
 
-    @mock.patch('aws_role_credentials.models.SamlAssertion')
+    @mock.patch('nd_okta_auth.aws_saml.SamlAssertion')
     def setUp(self, mock_saml):
         self.fake_assertion = mock.MagicMock(name='FakeAssertion')
         mock_saml.return_value = self.fake_assertion

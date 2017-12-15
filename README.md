@@ -80,6 +80,10 @@ environment is quick and easy.
     $ virtualenv .venv
     $ source .venv/bin/activate
     $ pip install -r requirements.txt
+    
+## Python Versions
+
+Python 2.7.1+ and Python 3.5.0+ are supported
 
 ## Running Tests
 
