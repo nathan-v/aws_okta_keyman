@@ -166,17 +166,27 @@ def main(argv):
         # still valid. If it is, sleep a bit and skip to the next execution of
         # the loop.
         if session and session.is_valid:
-            log.debug('Credentials are still valid, sleepingt')
+            log.debug('Credentials are still valid, sleeping')
             time.sleep(15)
             continue
 
-        log.info('Getting SAML Assertion from {org}'.format(
-            org=config.org))
-
-        try:
+        # Only set up the session if it's still None
+        if session is None:
             assertion = okta_client.get_assertion(appid=config.appid,
                                                   apptype='amazon_aws')
             session = aws.Session(assertion, profile=config.name)
+
+        try:
+            log.info('Getting SAML Assertion from {org}'.format(
+              org=config.org))
+            session.assume_role()
+        except aws.MultipleRoles:
+            log.warning('Multiple AWS roles found; please select one')
+            roles = session.available_roles()
+            for role_index, role in enumerate(roles):
+                print("[{}] Role: {}".format(role_index, role["role"]))
+            role_selection = user_input('Select a role from above: ')
+            session.set_role(role_selection)
             session.assume_role()
         except requests.exceptions.ConnectionError as e:
             log.warning('Connection error... will retry')
@@ -188,6 +198,7 @@ def main(argv):
         if not config.reup:
             break
 
+        log.info('Reup enabled, sleeping...')
         time.sleep(5)
 
 

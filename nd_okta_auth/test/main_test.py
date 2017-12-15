@@ -3,6 +3,7 @@ import unittest
 import logging
 import sys
 from nd_okta_auth import main
+from nd_okta_auth import aws
 from nd_okta_auth import okta
 if sys.version_info[0] < 3:  # Python 2
     import mock
@@ -117,6 +118,51 @@ class MainTest(unittest.TestCase):
         input_mock.assert_has_calls([
             mock.call('MFA Passcode: '),
             mock.call('MFA Passcode: '),
+        ])
+
+    @mock.patch('nd_okta_auth.main.user_input')
+    @mock.patch('nd_okta_auth.aws.Session')
+    @mock.patch('nd_okta_auth.okta.OktaSaml')
+    @mock.patch('nd_okta_auth.main.get_config_parser')
+    @mock.patch('getpass.getpass')
+    def test_entry_point_multirole(self, pass_mock, config_mock,
+                                   okta_mock, aws_mock, input_mock):
+        # First call to this is the password. Second call is the mis-typed
+        # passcode. Third call is a valid passcode.
+        pass_mock.side_effect = ['test_password']
+        input_mock.side_effect = '0'
+
+        # Just mock out the entire Okta object, we won't really instantiate it
+        fake_okta = mock.MagicMock(name='OktaSaml')
+        okta_mock.return_value = fake_okta
+        aws_mock.return_value = mock.MagicMock(name='aws_mock')
+
+        # Throw MultipleRoles to validate actions when there are multiple roles
+        mocked_session = aws_mock.return_value
+        mocked_session.assume_role.side_effect = [aws.MultipleRoles(), None]
+
+        # Return multiple roles
+        mocked_session.available_roles = mock.Mock()
+        roles = [{'role': '1', 'principle': ''},
+                 {'role': '2', 'principle': ''}]
+        mocked_session.available_roles.return_value = roles
+
+        # Make sure we don't get stuck in a loop, always have to mock out the
+        # reup option.
+        fake_parser = mock.MagicMock(name='fake_parser')
+        fake_parser.reup = 0
+        config_mock.return_value = fake_parser
+
+        main.main('test')
+
+        # Ensure that getpass was called once for the password
+        pass_mock.assert_has_calls([
+            mock.call(),
+        ])
+
+        # Ensure that user_input was called for the role selection
+        input_mock.assert_has_calls([
+            mock.call('Select a role from above: '),
         ])
 
     @mock.patch('nd_okta_auth.okta.OktaSaml')

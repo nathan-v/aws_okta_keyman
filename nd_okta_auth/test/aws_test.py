@@ -97,6 +97,18 @@ class TestSesssion(unittest.TestCase):
 
         self.assertEquals(False, ret)
 
+    def test_is_valid_false_missing_expiration(self):
+        session = aws.Session('BogusAssertion')
+
+        # Set expiration to None like we failed to set the value
+        session.expiration = None
+
+        # Should return False - the time comparison isn't possible if
+        # expiration hasn't been set yet.
+        ret = session.is_valid
+
+        self.assertEquals(False, ret)
+
     def test_is_valid_true(self):
         session = aws.Session('BogusAssertion')
 
@@ -105,7 +117,7 @@ class TestSesssion(unittest.TestCase):
         # Now set our current time to 3:55PM UTC
         mock_now = datetime.datetime(2017, 7, 25, 15, 55, 00, 000000)
 
-        # Should return False - less than 600 seconds away from expiration
+        # Should return True - more than 600 seconds to expiration
         with mock.patch('datetime.datetime') as dt_mock:
             dt_mock.utcnow.return_value = mock_now
             dt_mock.strptime.return_value = expir_mock
@@ -154,7 +166,46 @@ class TestSesssion(unittest.TestCase):
             mock.call()
         ])
 
+    @mock.patch('nd_okta_auth.aws.Session._write')
+    def test_assume_role_multiple(self, mock_write):
+        mock_write.return_value = None
+        assertion = mock.Mock()
+        roles = [{'role': '1', 'principle': ''},
+                 {'role': '2', 'principle': ''}]
+        assertion.roles.return_value = roles
+        session = aws.Session('BogusAssertion')
+        session.assertion = assertion
+        sts = {'Credentials':
+               {'AccessKeyId':     'AKI',
+                'SecretAccessKey': 'squirrel',
+                'SessionToken':    'token',
+                'Expiration':      'never'
+                }}
+        session.sts = mock.Mock()
+        session.sts.assume_role_with_saml.return_value = sts
+
+        with self.assertRaises(aws.MultipleRoles):
+            session.assume_role()
+
     def test_assume_role_bad_assertion_raises_invalidsaml(self):
         session = aws.Session('BogusAssertion')
         with self.assertRaises(aws.InvalidSaml):
             session.assume_role()
+
+    def test_set_role(self):
+        assertion = mock.Mock()
+        assertion.roles.return_value = [{'role': '', 'principle': ''}]
+        session = aws.Session('BogusAssertion')
+        session.assertion = assertion
+        session.set_role('0')
+        self.assertEquals('', session.role['role'])
+
+    def test_available_roles(self):
+        assertion = mock.Mock()
+        roles = [{'role': '1', 'principle': ''},
+                 {'role': '2', 'principle': ''}]
+        assertion.roles.return_value = roles
+        session = aws.Session('BogusAssertion')
+        session.assertion = assertion
+        result = session.available_roles()
+        self.assertEquals(roles, result)

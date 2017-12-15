@@ -34,6 +34,10 @@ class InvalidSaml(BaseException):
     '''Raised when the SAML Assertion is invalid for some reason'''
 
 
+class MultipleRoles(BaseException):
+    '''Raised when AWS offers multiple roles'''
+
+
 class Credentials(object):
 
     '''Simple AWS Credentials Profile representation.
@@ -127,6 +131,7 @@ class Session(object):
         self.aws_session_token = None
         self.expiration = None
         self.session_token = None
+        self.role = None
 
     @property
     def is_valid(self):
@@ -146,12 +151,23 @@ class Session(object):
             Bool
         '''
         # Consider the tokens expired when they have 10m left
-        buffer = datetime.timedelta(seconds=600)
-        now = datetime.datetime.utcnow()
-        expir = datetime.datetime.strptime(str(self.expiration),
-                                           '%Y-%m-%d %H:%M:%S+00:00')
+        try:
+            buffer = datetime.timedelta(seconds=600)
+            now = datetime.datetime.utcnow()
+            expir = datetime.datetime.strptime(str(self.expiration),
+                                               '%Y-%m-%d %H:%M:%S+00:00')
 
-        return (now + buffer) < expir
+            return (now + buffer) < expir
+        except ValueError:
+            return False
+
+    def set_role(self, role_index):
+        '''Sets the role based on the supplied index value'''
+        self.role = self.assertion.roles()[int(role_index)]
+
+    def available_roles(self):
+        '''Returns the roles availble from AWS'''
+        return self.assertion.roles()
 
     def assume_role(self):
         '''Use the SAML Assertion to actually get the credentials.
@@ -160,16 +176,22 @@ class Session(object):
         and get back a set of temporary credentials. These are written out to
         disk and can be used for an hour before they need to be replaced.
         '''
-        try:
-            role = self.assertion.roles()[0]
-        except xml.etree.ElementTree.ParseError:
-            log.error('Could not find any Role in the SAML assertion')
-            log.error(self.assertion.__dict__)
-            raise InvalidSaml()
+        if self.role is None:
+            try:
+                if len(self.assertion.roles()) > 1:
+                    raise MultipleRoles
+                else:
+                    self.role = self.assertion.roles()[0]
+            except xml.etree.ElementTree.ParseError:
+                log.error('Could not find any Role in the SAML assertion')
+                log.error(self.assertion.__dict__)
+                raise InvalidSaml()
+
+        log.info('Assuming role: {}'.format(self.role['role']))
 
         session = self.sts.assume_role_with_saml(
-            RoleArn=role['role'],
-            PrincipalArn=role['principle'],
+            RoleArn=self.role['role'],
+            PrincipalArn=self.role['principle'],
             SAMLAssertion=self.assertion.encode())
         creds = session['Credentials']
 
