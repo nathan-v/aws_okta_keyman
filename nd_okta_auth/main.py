@@ -32,7 +32,7 @@ from nd_okta_auth.metadata import __desc__, __version__
 
 def user_input(text):
     '''Wraps input() making testing support of py2 and py3 easier'''
-    input(text)
+    return input(text)
 
 
 def setup_logging():
