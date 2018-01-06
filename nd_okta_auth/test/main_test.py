@@ -152,3 +152,13 @@ class MainTest(unittest.TestCase):
 
         with self.assertRaises(SystemExit):
             main.main('test')
+
+    @mock.patch('nd_okta_auth.main.input')
+    def test_input(self, mock_input):
+        mock_input.return_value = 'test'
+        self.assertEqual('test', main.user_input('input test'))
+
+    @mock.patch('nd_okta_auth.main.main')
+    def test_entry_point_func(self, main_mock):
+        with self.assertRaises(SystemExit):
+            main.entry_point()

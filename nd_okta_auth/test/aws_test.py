@@ -112,3 +112,49 @@ class TestSesssion(unittest.TestCase):
             ret = session.is_valid
 
         self.assertEquals(True, ret)
+
+    @mock.patch('nd_okta_auth.aws.Credentials.add_profile')
+    def test_write(self, mock_add_profile):
+        session = aws.Session('BogusAssertion')
+        ret = session._write()
+
+        self.assertEquals(None, ret)
+
+        # Verify add_profile is called with the correct args
+        mock_add_profile.assert_has_calls([
+            mock.call(access_key=None, name='default',
+                      region='us-east-1', secret_key=None, session_token=None)
+        ])
+
+    @mock.patch('nd_okta_auth.aws.Session._write')
+    def test_assume_role(self, mock_write):
+        mock_write.return_value = None
+        assertion = mock.Mock()
+        assertion.roles.return_value = [{'role': '', 'principle': ''}]
+        session = aws.Session('BogusAssertion')
+        session.assertion = assertion
+        sts = {'Credentials':
+               {'AccessKeyId':     'AKI',
+                'SecretAccessKey': 'squirrel',
+                'SessionToken':    'token',
+                'Expiration':      'never'
+                }}
+        session.sts = mock.Mock()
+        session.sts.assume_role_with_saml.return_value = sts
+        ret = session.assume_role()
+
+        self.assertEquals(None, ret)
+        self.assertEquals('AKI', session.aws_access_key_id)
+        self.assertEquals('squirrel', session.aws_secret_access_key)
+        self.assertEquals('token', session.session_token)
+        self.assertEquals('never', session.expiration)
+
+        # Verify _write is called correctly
+        mock_write.assert_has_calls([
+            mock.call()
+        ])
+
+    def test_assume_role_bad_assertion_raises_invalidsaml(self):
+        session = aws.Session('BogusAssertion')
+        with self.assertRaises(aws.InvalidSaml):
+            session.assume_role()

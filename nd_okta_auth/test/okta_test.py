@@ -274,6 +274,18 @@ class OktaTest(unittest.TestCase):
             mock.call('abcd', 'token')
         ])
 
+    def test_auth_trigger_okta_verify_canceled(self):
+        client = okta.Okta('organization', 'username', 'password')
+        client._request = mock.MagicMock(name='_request')
+        client.okta_verify_with_push = mock.MagicMock(
+            name='okta_verify_with_push')
+        client.okta_verify_with_push.side_effect = KeyboardInterrupt
+
+        client._request.side_effect = [MFA_CHALLENGE_RESPONSE_OKTA_VERIFY]
+
+        with self.assertRaises(okta.UnknownError):
+            client.auth()
+
     def test_auth_throws_passcode_required(self):
         client = okta.Okta('organization', 'username', 'password')
         client._request = mock.MagicMock(name='_request')
