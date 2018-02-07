@@ -187,6 +187,25 @@ class MainTest(unittest.TestCase):
     @mock.patch('nd_okta_auth.okta.OktaSaml')
     @mock.patch('nd_okta_auth.main.get_config_parser')
     @mock.patch('getpass.getpass')
+    def test_entry_point_okta_unknown(self, pass_mock, config_mock, okta_mock):
+        # Mock out the password getter and return a simple password
+        pass_mock.return_value = 'test_password'
+
+        # Just mock out the entire Okta object, we won't really instantiate it
+        fake_okta = mock.MagicMock(name='fake_okta')
+        fake_okta.auth.side_effect = okta.UnknownError
+        okta_mock.return_value = fake_okta
+
+        # Mock out the arguments that were passed in
+        fake_parser = mock.MagicMock(name='fake_parser')
+        config_mock.return_value = fake_parser
+
+        with self.assertRaises(SystemExit):
+            main.main('test')
+
+    @mock.patch('nd_okta_auth.okta.OktaSaml')
+    @mock.patch('nd_okta_auth.main.get_config_parser')
+    @mock.patch('getpass.getpass')
     def test_entry_point_bad_input(self, pass_mock, config_mock, okta_mock):
         # Pretend that we got some bad input...
         pass_mock.return_value = ''

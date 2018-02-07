@@ -13,8 +13,11 @@ import time
 import sys
 import bs4
 import requests
-if sys.version_info[0] < 3:  # Python 2
-    from exceptions import Exception
+import webbrowser
+from multiprocessing import Process
+from nd_okta_auth.duo import Duo
+if sys.version_info[0] < 3:  # pragma: no cover
+    from exceptions import Exception  # Python 2
 
 log = logging.getLogger(__name__)
 
@@ -158,7 +161,7 @@ class Okta(object):
     def okta_verify_with_push(self, fid, state_token, sleep=1):
         '''Triggers an Okta Push Verification and waits.
 
-        This metho is meant to be called by self.auth() if a Login session
+        This method is meant to be called by self.auth() if a Login session
         requires MFA, and the users profile supports Okta Push with Verify.
 
         We trigger the push, and then immediately go into a wait loop. Each
@@ -182,6 +185,57 @@ class Okta(object):
 
             if ret.get('factorResult', 'REJECTED') == 'REJECTED':
                 log.error('Okta Verify Push REJECTED')
+                return False
+
+            if ret.get('factorResult', 'TIMEOUT') == 'TIMEOUT':
+                log.error('Okta Verify Push TIMEOUT')
+                return False
+
+            links = ret.get('_links')
+            ret = self._request(links['next']['href'], data)
+
+        self.set_token(ret)
+        return True
+
+    def duo_auth(self, uid, fid, state_token, sleep=1):
+        '''Triggers a Duo Auth request.
+
+        This method is meant to be called by self.auth() if a Login session
+        requires MFA, and the users profile supports Duo Web.
+
+        We set up a local web server for web auth and then open a browser for
+        the user. We then immediately go into a wait loop. Each time we loop
+        around, we pull the latest status for that push event. If it's Declined
+        we will throw an error. If its accepted, we write out our SessionToken.
+
+        Args:
+            uid: Okta user ID required by Duo
+            fid: Okta Factor ID used to trigger the push
+            state_token: State Token allowing us to trigger the push
+        '''
+        log.warning('Duo requied; opening browser...')
+        path = '/authn/factors/{fid}/verify'.format(fid=fid)
+        data = {'fid': fid,
+                'stateToken': state_token}
+        ret = self._request(path, data)
+
+        verification = ret['_embedded']['factor']['_embedded']['verification']
+        duo = Duo(verification, state_token)
+        p = Process(target=duo.trigger_duo)
+        p.start()
+        time.sleep(2)
+        webbrowser.open_new('http://127.0.0.1:65432/duo.html')
+
+        while ret['status'] != 'SUCCESS':
+            log.info('Waiting for Okta Verification...')
+            time.sleep(sleep)
+
+            if ret.get('factorResult', 'REJECTED') == 'REJECTED':
+                log.error('Duo Push REJECTED')
+                return False
+
+            if ret.get('factorResult', 'TIMEOUT') == 'TIMEOUT':
+                log.error('Duo Push TIMEOUT')
                 return False
 
             links = ret.get('_links')
@@ -231,15 +285,21 @@ class Okta(object):
 
         if status == 'MFA_REQUIRED' or status == 'MFA_CHALLENGE':
             for factor in ret['_embedded']['factors']:
-                if factor['factorType'] == 'push':
-                    try:
+                try:
+                    if factor['factorType'] == 'push':
                         if self.okta_verify_with_push(factor['id'],
                                                       ret['stateToken']):
                             return
-                    except KeyboardInterrupt:
-                        # Allow users to use MFA Passcode by
-                        # breaking out of waiting for the push.
-                        break
+                    if factor['provider'] == 'DUO':
+                        if self.duo_auth(ret['_embedded']['user']['id'],
+                                         factor['id'],
+                                         ret['stateToken']):
+                            return
+
+                except KeyboardInterrupt:
+                    # Allow users to use MFA Passcode by
+                    # breaking out of waiting for the push.
+                    break
 
             for factor in ret['_embedded']['factors']:
                 if factor['factorType'] == 'token:software:totp':

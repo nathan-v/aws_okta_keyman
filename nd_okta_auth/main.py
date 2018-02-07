@@ -156,6 +156,9 @@ def main(argv):
         while not verified:
             passcode = user_input('MFA Passcode: ')
             verified = okta_client.validate_mfa(e.fid, e.state_token, passcode)
+    except okta.UnknownError as e:
+        log.fatal('Fatal error.')
+        sys.exit(1)
 
     # Once we're authenticated with an OktaSaml client object, we can use that
     # object to get a fresh SAMLResponse repeatedly and refresh our AWS

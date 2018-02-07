@@ -38,6 +38,23 @@ MFA_CHALLENGE_RESPONSE_OKTA_VERIFY = {
         'factors': [
             {
                 'factorType': 'push',
+                'provider': 'OKTA',
+                'id': 'abcd',
+            }
+        ]
+    },
+    'stateToken': 'token',
+}
+MFA_CHALLENGE_RESPONSE_DUO_AUTH = {
+    'status': 'MFA_REQUIRED',
+    '_embedded': {
+        'user': {
+            'id': 123
+        },
+        'factors': [
+            {
+                'factorType': 'web',
+                'provider': 'DUO',
                 'id': 'abcd',
             }
         ]
@@ -50,6 +67,7 @@ MFA_CHALLENGE_RESPONSE_PASSCODE = {
         'factors': [
             {
                 'factorType': 'token:software:totp',
+                'provider': 'OKTA',
                 'id': 'abcd',
             }
         ]
@@ -65,6 +83,13 @@ MFA_WAITING_RESPONSE = {
         }
     },
     'stateToken': 'token',
+    '_embedded': {
+        'factor': {
+            '_embedded': {
+                'verification': {}
+            }
+        }
+    },
 }
 MFA_REJECTED_RESPONSE = {
     'status': 'MFA_CHALLENGE',
@@ -75,6 +100,30 @@ MFA_REJECTED_RESPONSE = {
         }
     },
     'stateToken': 'token',
+    '_embedded': {
+        'factor': {
+            '_embedded': {
+                'verification': {}
+            }
+        }
+    },
+}
+MFA_TIMEOUT_RESPONSE = {
+    'status': 'MFA_CHALLENGE',
+    'factorResult': 'TIMEOUT',
+    '_links': {
+        'next': {
+            'href': 'https://foobar.okta.com/api/v1/authn/factors/X/verify',
+        }
+    },
+    'stateToken': 'token',
+    '_embedded': {
+        'factor': {
+            '_embedded': {
+                'verification': {}
+            }
+        }
+    },
 }
 
 
@@ -212,7 +261,7 @@ class OktaTest(unittest.TestCase):
             SUCCESS_RESPONSE,
         ]
 
-        ret = client.okta_verify_with_push('123', 'token', sleep=0.1)
+        ret = client.okta_verify_with_push('123', 'token', sleep=0)
         self.assertEquals(ret, True)
 
     def test_okta_verify_with_push_rejected(self):
@@ -226,7 +275,78 @@ class OktaTest(unittest.TestCase):
             MFA_REJECTED_RESPONSE,
         ]
 
-        ret = client.okta_verify_with_push('123', 'token', sleep=0.1)
+        ret = client.okta_verify_with_push('123', 'token', sleep=0)
+        self.assertEquals(ret, False)
+
+    def test_okta_verify_with_push_timeout(self):
+        client = okta.Okta('organization', 'username', 'password')
+        client._request = mock.MagicMock(name='_request')
+
+        client._request.side_effect = [
+            MFA_WAITING_RESPONSE,
+            MFA_WAITING_RESPONSE,
+            MFA_WAITING_RESPONSE,
+            MFA_TIMEOUT_RESPONSE,
+        ]
+
+        ret = client.okta_verify_with_push('123', 'token', sleep=0)
+        self.assertEquals(ret, False)
+
+    @mock.patch('time.sleep', return_value=None)
+    @mock.patch('webbrowser.open_new')
+    @mock.patch('nd_okta_auth.okta.Process')
+    def test_duo_auth(self, process_mock, _web_mock, _sleep_mock):
+        client = okta.Okta('organization', 'username', 'password')
+        client._request = mock.MagicMock(name='_request')
+
+        process_mock.start.return_value = None
+
+        client._request.side_effect = [
+            MFA_WAITING_RESPONSE,
+            MFA_WAITING_RESPONSE,
+            MFA_WAITING_RESPONSE,
+            SUCCESS_RESPONSE,
+        ]
+
+        ret = client.duo_auth('user', '123', 'token', sleep=0)
+        self.assertEquals(ret, True)
+
+    @mock.patch('time.sleep', return_value=None)
+    @mock.patch('webbrowser.open_new')
+    @mock.patch('nd_okta_auth.okta.Process')
+    def test_duo_auth_rejected(self, process_mock, _web_mock, _sleep_mock):
+        client = okta.Okta('organization', 'username', 'password')
+        client._request = mock.MagicMock(name='_request')
+
+        process_mock.start.return_value = None
+
+        client._request.side_effect = [
+            MFA_WAITING_RESPONSE,
+            MFA_WAITING_RESPONSE,
+            MFA_WAITING_RESPONSE,
+            MFA_REJECTED_RESPONSE,
+        ]
+
+        ret = client.duo_auth('user', '123', 'token', sleep=0)
+        self.assertEquals(ret, False)
+
+    @mock.patch('time.sleep', return_value=None)
+    @mock.patch('webbrowser.open_new')
+    @mock.patch('nd_okta_auth.okta.Process')
+    def test_duo_auth_timeout(self, process_mock, _web_mock, _sleep_mock):
+        client = okta.Okta('organization', 'username', 'password')
+        client._request = mock.MagicMock(name='_request')
+
+        process_mock.start.return_value = None
+
+        client._request.side_effect = [
+            MFA_WAITING_RESPONSE,
+            MFA_WAITING_RESPONSE,
+            MFA_WAITING_RESPONSE,
+            MFA_TIMEOUT_RESPONSE,
+        ]
+
+        ret = client.duo_auth('user', '123', 'token', sleep=0)
         self.assertEquals(ret, False)
 
     def test_auth_bad_password(self):
@@ -285,6 +405,20 @@ class OktaTest(unittest.TestCase):
 
         with self.assertRaises(okta.UnknownError):
             client.auth()
+
+    def test_auth_trigger_duo_auth(self):
+        client = okta.Okta('organization', 'username', 'password')
+        client._request = mock.MagicMock(name='_request')
+        client.duo_auth = mock.MagicMock(
+            name='duo_auth')
+
+        client._request.side_effect = [MFA_CHALLENGE_RESPONSE_DUO_AUTH]
+
+        ret = client.auth()
+        self.assertEquals(ret, None)
+        client.duo_auth.assert_has_calls([
+            mock.call(123, 'abcd', 'token')
+        ])
 
     def test_auth_throws_passcode_required(self):
         client = okta.Okta('organization', 'username', 'password')
