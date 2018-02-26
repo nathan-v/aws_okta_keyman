@@ -180,8 +180,7 @@ class Session(object):
             try:
                 if len(self.assertion.roles()) > 1:
                     raise MultipleRoles
-                else:
-                    self.role = self.assertion.roles()[0]
+                self.role = self.assertion.roles()[0]
             except xml.etree.ElementTree.ParseError:
                 log.error('Could not find any Role in the SAML assertion')
                 log.error(self.assertion.__dict__)

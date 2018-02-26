@@ -170,13 +170,13 @@ def main(argv):
             time.sleep(15)
             continue
 
-        # Only set up the session if it's still None
-        if session is None:
-            assertion = okta_client.get_assertion(appid=config.appid,
-                                                  apptype='amazon_aws')
-            session = aws.Session(assertion, profile=config.name)
-
         try:
+            # Only set up the session if it's still None
+            if session is None:
+                assertion = okta_client.get_assertion(appid=config.appid,
+                                                      apptype='amazon_aws')
+                session = aws.Session(assertion, profile=config.name)
+
             log.info('Getting SAML Assertion from {org}'.format(
               org=config.org))
             session.assume_role()
