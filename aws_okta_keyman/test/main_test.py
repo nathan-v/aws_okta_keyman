@@ -2,9 +2,9 @@ from __future__ import unicode_literals
 import unittest
 import logging
 import sys
-from nd_okta_auth import main
-from nd_okta_auth import aws
-from nd_okta_auth import okta
+from aws_okta_keyman import main
+from aws_okta_keyman import aws
+from aws_okta_keyman import okta
 if sys.version_info[0] < 3:  # Python 2
     import mock
 else:
@@ -27,7 +27,7 @@ class MainTest(unittest.TestCase):
 
         # Also simulates the _required_ options being passed in
         argv = [
-            'nd_okta_auth.py',
+            'aws_okta_keyman.py',
             '-a', 'app/id',
             '-o', 'foobar',
             '-u', 'test'
@@ -37,9 +37,9 @@ class MainTest(unittest.TestCase):
         self.assertEquals(ret.appid, 'app/id')
         self.assertEquals(ret.username, 'test')
 
-    @mock.patch('nd_okta_auth.aws.Session')
-    @mock.patch('nd_okta_auth.okta.OktaSaml')
-    @mock.patch('nd_okta_auth.main.get_config_parser')
+    @mock.patch('aws_okta_keyman.aws.Session')
+    @mock.patch('aws_okta_keyman.okta.OktaSaml')
+    @mock.patch('aws_okta_keyman.main.get_config_parser')
     @mock.patch('getpass.getpass')
     def test_entry_point(self, pass_mock, config_mock, okta_mock, aws_mock):
         # Mock out the password getter and return a simple password
@@ -62,10 +62,10 @@ class MainTest(unittest.TestCase):
 
         okta_mock.assert_called_with('server', 'username', 'test_password')
 
-    @mock.patch('nd_okta_auth.main.user_input')
-    @mock.patch('nd_okta_auth.aws.Session')
-    @mock.patch('nd_okta_auth.okta.OktaSaml')
-    @mock.patch('nd_okta_auth.main.get_config_parser')
+    @mock.patch('aws_okta_keyman.main.user_input')
+    @mock.patch('aws_okta_keyman.aws.Session')
+    @mock.patch('aws_okta_keyman.okta.OktaSaml')
+    @mock.patch('aws_okta_keyman.main.get_config_parser')
     @mock.patch('getpass.getpass')
     def test_entry_point_mfa(self, pass_mock, config_mock,
                              okta_mock, aws_mock, input_mock):
@@ -120,10 +120,10 @@ class MainTest(unittest.TestCase):
             mock.call('MFA Passcode: '),
         ])
 
-    @mock.patch('nd_okta_auth.main.user_input')
-    @mock.patch('nd_okta_auth.aws.Session')
-    @mock.patch('nd_okta_auth.okta.OktaSaml')
-    @mock.patch('nd_okta_auth.main.get_config_parser')
+    @mock.patch('aws_okta_keyman.main.user_input')
+    @mock.patch('aws_okta_keyman.aws.Session')
+    @mock.patch('aws_okta_keyman.okta.OktaSaml')
+    @mock.patch('aws_okta_keyman.main.get_config_parser')
     @mock.patch('getpass.getpass')
     def test_entry_point_multirole(self, pass_mock, config_mock,
                                    okta_mock, aws_mock, input_mock):
@@ -165,8 +165,8 @@ class MainTest(unittest.TestCase):
             mock.call('Select a role from above: '),
         ])
 
-    @mock.patch('nd_okta_auth.okta.OktaSaml')
-    @mock.patch('nd_okta_auth.main.get_config_parser')
+    @mock.patch('aws_okta_keyman.okta.OktaSaml')
+    @mock.patch('aws_okta_keyman.main.get_config_parser')
     @mock.patch('getpass.getpass')
     def test_entry_point_bad_password(self, pass_mock, config_mock, okta_mock):
         # Mock out the password getter and return a simple password
@@ -184,8 +184,8 @@ class MainTest(unittest.TestCase):
         with self.assertRaises(SystemExit):
             main.main('test')
 
-    @mock.patch('nd_okta_auth.okta.OktaSaml')
-    @mock.patch('nd_okta_auth.main.get_config_parser')
+    @mock.patch('aws_okta_keyman.okta.OktaSaml')
+    @mock.patch('aws_okta_keyman.main.get_config_parser')
     @mock.patch('getpass.getpass')
     def test_entry_point_okta_unknown(self, pass_mock, config_mock, okta_mock):
         # Mock out the password getter and return a simple password
@@ -203,8 +203,8 @@ class MainTest(unittest.TestCase):
         with self.assertRaises(SystemExit):
             main.main('test')
 
-    @mock.patch('nd_okta_auth.okta.OktaSaml')
-    @mock.patch('nd_okta_auth.main.get_config_parser')
+    @mock.patch('aws_okta_keyman.okta.OktaSaml')
+    @mock.patch('aws_okta_keyman.main.get_config_parser')
     @mock.patch('getpass.getpass')
     def test_entry_point_bad_input(self, pass_mock, config_mock, okta_mock):
         # Pretend that we got some bad input...
@@ -218,12 +218,12 @@ class MainTest(unittest.TestCase):
         with self.assertRaises(SystemExit):
             main.main('test')
 
-    @mock.patch('nd_okta_auth.main.input')
+    @mock.patch('aws_okta_keyman.main.input')
     def test_input(self, mock_input):
         mock_input.return_value = 'test'
         self.assertEqual('test', main.user_input('input test'))
 
-    @mock.patch('nd_okta_auth.main.main')
+    @mock.patch('aws_okta_keyman.main.main')
     def test_entry_point_func(self, main_mock):
         with self.assertRaises(SystemExit):
             main.entry_point()

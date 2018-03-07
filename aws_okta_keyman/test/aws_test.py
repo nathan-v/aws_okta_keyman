@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 import datetime
 import unittest
 import sys
-from nd_okta_auth import aws
+from aws_okta_keyman import aws
 if sys.version_info[0] < 3:  # Python 2
     import mock
 else:
@@ -11,9 +11,9 @@ else:
 
 class TestCredentials(unittest.TestCase):
 
-    @mock.patch('nd_okta_auth.aws.os.chmod')
+    @mock.patch('aws_okta_keyman.aws.os.chmod')
     @mock.patch('configparser.ConfigParser')
-    @mock.patch('nd_okta_auth.aws.open')
+    @mock.patch('aws_okta_keyman.aws.open')
     def test_add_profile(self, open_mock, parser_mock, chmod_mock):
         fake_parser = mock.MagicMock(name='config_parser')
         parser_mock.return_value = fake_parser
@@ -40,9 +40,9 @@ class TestCredentials(unittest.TestCase):
             mock.call.set('TestProfile', 'aws_access_key_id', 'key')
         ], any_order=True)
 
-    @mock.patch('nd_okta_auth.aws.os.chmod')
+    @mock.patch('aws_okta_keyman.aws.os.chmod')
     @mock.patch('configparser.ConfigParser')
-    @mock.patch('nd_okta_auth.aws.open')
+    @mock.patch('aws_okta_keyman.aws.open')
     def test_add_profile_missing_file_creates_new(self,
                                                   open_mock,
                                                   parser_mock,
@@ -76,7 +76,7 @@ class TestCredentials(unittest.TestCase):
 
 class TestSesssion(unittest.TestCase):
 
-    @mock.patch('nd_okta_auth.aws_saml.SamlAssertion')
+    @mock.patch('aws_okta_keyman.aws_saml.SamlAssertion')
     def setUp(self, mock_saml):
         self.fake_assertion = mock.MagicMock(name='FakeAssertion')
         mock_saml.return_value = self.fake_assertion
@@ -125,7 +125,7 @@ class TestSesssion(unittest.TestCase):
 
         self.assertEquals(True, ret)
 
-    @mock.patch('nd_okta_auth.aws.Credentials.add_profile')
+    @mock.patch('aws_okta_keyman.aws.Credentials.add_profile')
     def test_write(self, mock_add_profile):
         session = aws.Session('BogusAssertion')
         ret = session._write()
@@ -138,7 +138,7 @@ class TestSesssion(unittest.TestCase):
                       region='us-east-1', secret_key=None, session_token=None)
         ])
 
-    @mock.patch('nd_okta_auth.aws.Session._write')
+    @mock.patch('aws_okta_keyman.aws.Session._write')
     def test_assume_role(self, mock_write):
         mock_write.return_value = None
         assertion = mock.Mock()
@@ -166,7 +166,7 @@ class TestSesssion(unittest.TestCase):
             mock.call()
         ])
 
-    @mock.patch('nd_okta_auth.aws.Session._write')
+    @mock.patch('aws_okta_keyman.aws.Session._write')
     def test_assume_role_multiple(self, mock_write):
         mock_write.return_value = None
         assertion = mock.Mock()

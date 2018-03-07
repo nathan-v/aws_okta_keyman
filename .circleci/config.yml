@@ -18,17 +18,17 @@ jobs:
             python -m venv venv || virtualenv venv
             . venv/bin/activate
             pip install -r requirements.txt
-            pip install -r requirements.test.txt
+            pip install -r test_requirements.txt
       - run:
           name: run tests
           command: |
             . venv/bin/activate
-            nosetests -vv --with-coverage --cover-erase --cover-package=nd_okta_auth
+            nosetests -vv --with-coverage --cover-erase --cover-package=aws_okta_keyman
       - run:
-          name: pep8
+          name: pycodestyle
           command: |
             . venv/bin/activate
-            python setup.py pep8
+            python setup.py pycodestyle
       - run:
           name: pyflakes
           command: |

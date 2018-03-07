@@ -1,10 +1,22 @@
-'''
-okta
-^^^^
+# -*- coding: utf-8 -*-
+#
+# Credits: Portions of this code were copied/modified from
+# https://github.com/ThoughtWorksInc/oktaauth
+#
+# Copyright (c) 2015, Peter Gillard-Moss
+# All rights reserved.
 
-Handles the initial Okta authentication - throws appropriate errors in the
-events of bad passwords, MFA requirements, etc.
-'''
+# Permission to use, copy, modify, and/or distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 from __future__ import unicode_literals
 import base64
@@ -15,7 +27,7 @@ import bs4
 import requests
 import webbrowser
 from multiprocessing import Process
-from nd_okta_auth.duo import Duo
+from aws_okta_keyman.duo import Duo
 if sys.version_info[0] < 3:  # pragma: no cover
     from exceptions import Exception  # Python 2
 
