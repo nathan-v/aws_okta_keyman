@@ -1,4 +1,5 @@
-# Copyright 2017 Nextdoor.com, Inc.
+# Copyright 2018 Nathan V
+# Copyright 2018 Nextdoor.com, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,14 +20,14 @@ from setuptools import Command
 from setuptools import setup
 from setuptools import find_packages
 
-from nd_okta_auth.metadata import __desc__, __version__
+from aws_okta_keyman.metadata import __desc__, __version__, __desc_long__
 
-PACKAGE = 'nd_okta_auth'
+PACKAGE = 'aws_okta_keyman'
 DIR = os.path.dirname(os.path.realpath(__file__))
 
 
-class Pep8Command(Command):
-    description = 'Pep8 Lint Checks'
+class PycodestyleCommand(Command):
+    description = 'Pycodestyle Lint Checks'
     user_options = []
 
     def initialize_options(self):
@@ -36,14 +37,14 @@ class Pep8Command(Command):
         pass
 
     def run(self):
-        # Don't import the pep8 module until now because setup.py needs to be
-        # able to install Pep8 if its missing.
-        import pep8
-        pep8style = pep8.StyleGuide(parse_argv=True, config_file='pep8.cfg')
-        report = pep8style.check_files([PACKAGE])
+        # Don't import the pycodestyle module until now because setup.py needs
+        # to be able to install pycodestyle if its missing.
+        import pycodestyle
+        style = pycodestyle.StyleGuide()
+        report = style.check_files([PACKAGE])
         if report.total_errors:
-            sys.exit('ERROR: Pep8 failed with exit %d errors' %
-                     report.total_errors)
+            sys.exit("ERROR: pycodestyle failed with {} errors".format(
+                report.total_errors))
 
 
 class PyflakesCommand(Command):
@@ -67,28 +68,28 @@ class PyflakesCommand(Command):
         # Run the Pyflakes check against our package and check its output
         val = api.checkRecursive([PACKAGE], reporter._makeDefaultReporter())
         if val > 0:
-            sys.exit('ERROR: Pyflakes failed with exit code %d' % val)
+            sys.exit("ERROR: Pyflakes failed with exit code {}".format(val))
 
 
 setup(
     name=PACKAGE,
     version=__version__,
     description=__desc__,
-    long_description=open('%s/README.md' % DIR).read(),
-    author='Nextdoor Engineering',
-    author_email='eng@nextdoor.com',
-    url='https://github.com/Nextdoor/nd_okta_auth',
-    download_url='http://pypi.python.org/pypi/%s#downloads' % PACKAGE,
+    long_description=__desc_long__,
+    author='Nathan V',
+    author_email='nathan.v@gmail.com',
+    url='https://github.com/nathan-v/aws_okta_keyman',
+    download_url="http://pypi.python.org/pypi/{}#downloads".format(PACKAGE),
     license='Apache License, Version 2.0',
-    keywords='apache',
+    keywords='AWS Okta Keys Auth Authentication MFA Duo',
     packages=find_packages(),
     test_suite='nose.collector',
-    tests_require=open('%s/requirements.test.txt' % DIR).readlines(),
+    tests_require=open("{}/test_requirements.txt".format(DIR)).readlines(),
     setup_requires=[],
-    install_requires=open('%s/requirements.txt' % DIR).readlines(),
+    install_requires=open("{}/requirements.txt".format(DIR)).readlines(),
     entry_points={
         'console_scripts': [
-            'nd_okta_auth = nd_okta_auth.main:entry_point'
+            'aws_okta_keyman = aws_okta_keyman.main:entry_point'
         ],
     },
     classifiers=[
@@ -96,12 +97,15 @@ setup(
         'Topic :: Software Development',
         'License :: OSI Approved :: Apache Software License',
         'Intended Audience :: Developers',
-        'Programming Language :: Python',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
         'Operating System :: POSIX',
         'Natural Language :: English',
     ],
+    python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, <4',
     cmdclass={
-        'pep8': Pep8Command,
+        'pycodestyle': PycodestyleCommand,
         'pyflakes': PyflakesCommand,
     },
 )

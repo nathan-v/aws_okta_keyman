@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 import sys
 import unittest
-from nd_okta_auth import duo
+from aws_okta_keyman import duo
 if sys.version_info[0] < 3:
     import mock  # Python 2
     from StringIO import StringIO as IO
@@ -47,7 +47,7 @@ class TestDuo(unittest.TestCase):
         self.assertEquals(duo_test.token, 'token')
 
     @mock.patch('time.sleep', return_value=None)
-    @mock.patch('nd_okta_auth.duo.Process')
+    @mock.patch('aws_okta_keyman.duo.Process')
     def test_trigger_duo(self, process_mock, _sleep_mock):
         process_mock.start.return_value = None
 
@@ -60,7 +60,7 @@ class TestDuo(unittest.TestCase):
 
         ])
 
-    @mock.patch('nd_okta_auth.duo.HTTPServer')
+    @mock.patch('aws_okta_keyman.duo.HTTPServer')
     def test_duo_webserver(self, server_mock):
         server_mock.return_value = mock.MagicMock()
 
@@ -72,7 +72,7 @@ class TestDuo(unittest.TestCase):
             mock.call().serve_forever()
         ])
 
-    @mock.patch('nd_okta_auth.duo.QuietHandler')
+    @mock.patch('aws_okta_keyman.duo.QuietHandler')
     def test_handler(self, qh_mock):
         duo_test = duo.Duo(DETAILS, 'token')
         duo_test.handler_with_html('foo', 'bar', 'baz')

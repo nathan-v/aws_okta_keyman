@@ -1,15 +1,22 @@
-'''
-aws
-^^^
+# -*- coding: utf-8 -*-
+#
+# Credits: Portions of this code were copied/modified from
+# https://github.com/ThoughtWorksInc/aws_role_credentials
+#
+# Copyright (c) 2015, Peter Gillard-Moss
+# All rights reserved.
 
-Simple module for writing generating and writing out AWS Credentials into your
-~/.aws/credentials file with a supplied Saml assertion.
+# Permission to use, copy, modify, and/or distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
 
-Credits: This code base was almost entirely stolen from
-https://github.com/ThoughtWorksInc/aws_role_credentials. It continues to be
-modified from the original code, but thanks a ton to the original writers at
-Thought Works Inc.
-'''
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 from __future__ import unicode_literals
 from builtins import str
@@ -21,7 +28,7 @@ from os.path import expanduser
 import xml
 
 import boto3
-from nd_okta_auth.aws_saml import SamlAssertion
+from aws_okta_keyman.aws_saml import SamlAssertion
 
 log = logging.getLogger(__name__)
 

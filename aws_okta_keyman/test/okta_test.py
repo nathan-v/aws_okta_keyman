@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 import unittest
 import requests
 import sys
-from nd_okta_auth import okta
+from aws_okta_keyman import okta
 if sys.version_info[0] < 3:  # Python 2
     import mock
 else:
@@ -294,7 +294,7 @@ class OktaTest(unittest.TestCase):
 
     @mock.patch('time.sleep', return_value=None)
     @mock.patch('webbrowser.open_new')
-    @mock.patch('nd_okta_auth.okta.Process')
+    @mock.patch('aws_okta_keyman.okta.Process')
     def test_duo_auth(self, process_mock, _web_mock, _sleep_mock):
         client = okta.Okta('organization', 'username', 'password')
         client._request = mock.MagicMock(name='_request')
@@ -313,7 +313,7 @@ class OktaTest(unittest.TestCase):
 
     @mock.patch('time.sleep', return_value=None)
     @mock.patch('webbrowser.open_new')
-    @mock.patch('nd_okta_auth.okta.Process')
+    @mock.patch('aws_okta_keyman.okta.Process')
     def test_duo_auth_rejected(self, process_mock, _web_mock, _sleep_mock):
         client = okta.Okta('organization', 'username', 'password')
         client._request = mock.MagicMock(name='_request')
@@ -332,7 +332,7 @@ class OktaTest(unittest.TestCase):
 
     @mock.patch('time.sleep', return_value=None)
     @mock.patch('webbrowser.open_new')
-    @mock.patch('nd_okta_auth.okta.Process')
+    @mock.patch('aws_okta_keyman.okta.Process')
     def test_duo_auth_timeout(self, process_mock, _web_mock, _sleep_mock):
         client = okta.Okta('organization', 'username', 'password')
         client._request = mock.MagicMock(name='_request')

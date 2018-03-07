@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Copyright 2017 Nextdoor.com, Inc
+# Copyright 2018 Nextdoor.com, Inc
+# Copyright 2018 Nathan V
 
 from __future__ import unicode_literals
 import argparse
@@ -25,9 +26,9 @@ from builtins import input
 
 import rainbow_logging_handler
 
-from nd_okta_auth import okta
-from nd_okta_auth import aws
-from nd_okta_auth.metadata import __desc__, __version__
+from aws_okta_keyman import okta
+from aws_okta_keyman import aws
+from aws_okta_keyman.metadata import __desc__, __version__
 
 
 def user_input(text):
@@ -148,7 +149,7 @@ def main(argv):
         okta_client.auth()
     except okta.InvalidPassword:
         log.error('Invalid Username ({user}) or Password'.format(
-                  user=config.username))
+            user=config.username))
         sys.exit(1)
     except okta.PasscodeRequired as e:
         log.warning('MFA Requirement Detected - Enter your passcode here')
@@ -181,7 +182,7 @@ def main(argv):
                 session = aws.Session(assertion, profile=config.name)
 
             log.info('Getting SAML Assertion from {org}'.format(
-              org=config.org))
+                org=config.org))
             session.assume_role()
         except aws.MultipleRoles:
             log.warning('Multiple AWS roles found; please select one')
