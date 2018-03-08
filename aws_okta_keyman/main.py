@@ -16,7 +16,6 @@
 # Copyright 2018 Nathan V
 
 from __future__ import unicode_literals
-import argparse
 import getpass
 import logging
 import sys
@@ -28,6 +27,7 @@ import rainbow_logging_handler
 
 from aws_okta_keyman import okta
 from aws_okta_keyman import aws
+from aws_okta_keyman.config import Config
 from aws_okta_keyman.metadata import __desc__, __version__
 
 
@@ -48,77 +48,6 @@ def setup_logging():
     return logger
 
 
-def get_config_parser(argv):
-    '''Returns a configured ArgumentParser for the CLI options'''
-    epilog = (
-        '**Application ID**\n'
-        'The ApplicationID is actually a two part piece of the redirect URL \n'
-        'that Okta uses when you are logged into the Web UI. If you mouse \n'
-        'over the appropriate Application and see a URL that looks like \n'
-        'this. \n'
-        '\n'
-        '\thttps://foobar.okta.com/home/amazon_aws/0oaciCSo1d8/123?...\n'
-        '\n'
-        'You would enter in "0oaciCSo1d8/123" as your Application ID.\n')
-
-    arg_parser = argparse.ArgumentParser(
-        prog=argv[0],
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=epilog,
-        description='Okta Auther')
-
-    # Get rid of the default optional arguments section that always shows up.
-    # Its not necessary, and confusing to have optional arguments listed first.
-    #   https://stackoverflow.com/questions/24180527/
-    #   argparse-required-arguments-listed-under-optional-arguments
-    arg_parser._action_groups.pop()
-
-    required_args = arg_parser.add_argument_group('required arguments')
-    required_args.add_argument('-o', '--org', type=str,
-                               help=(
-                                   'Okta Organization Name - ie, if your login'
-                                   ' URL is https://foobar.okta.com, enter in '
-                                   'foobar here'
-                               ),
-                               required=True)
-    required_args.add_argument('-u', '--username', type=str,
-                               help=(
-                                   'Okta Login Name - either bob@foobar.com, '
-                                   'or just bob works too, depending on your '
-                                   'organization settings.'
-                               ),
-                               required=True)
-    required_args.add_argument('-a', '--appid', type=str,
-                               help=(
-                                   'The "redirect link" Application ID  - '
-                                   'this can be found by mousing over the '
-                                   'application in Okta\'s Web UI. See '
-                                   'details below for more help.'
-                               ),
-                               required=True)
-
-    optional_args = arg_parser.add_argument_group('optional arguments')
-    optional_args.add_argument('-V', '--version', action='version',
-                               version=__version__)
-    optional_args.add_argument('-D', '--debug', action='store_true',
-                               help=(
-                                   'Enable DEBUG logging - note, this is '
-                                   'extremely verbose and exposes credentials '
-                                   'so be careful here!'
-                               ),
-                               default=False)
-    optional_args.add_argument('-r', '--reup', action='store_true',
-                               help=(
-                                   'Automatically re-up the AWS creds before'
-                                   'they expire.'
-                               ), default=0)
-    optional_args.add_argument('-n', '--name', type=str,
-                               help='AWS Profile Name', default='default')
-
-    config = arg_parser.parse_args(args=argv[1:])
-    return config
-
-
 def main(argv):
     # Generate our logger first, and write out our app name and version
     log = setup_logging()
@@ -126,7 +55,24 @@ def main(argv):
 
     # Get our configuration object based on the CLI options. This handles
     # parsing arguments and ensuring the user supplied the required params.
-    config = get_config_parser(argv)
+    config = Config(argv)
+    try:
+        config.get_config()
+    except ValueError as err:
+        log.fatal(err)
+        sys.exit(1)
+
+    if config.appid is None and config.accounts:
+        msg = 'No app ID provided; please select from available AWS accounts'
+        log.warning(msg)
+        accts = config.accounts
+        for acct_index, role in enumerate(accts):
+            print("[{}] Account: {}".format(acct_index, role["name"]))
+        acct_selection = int(user_input('Select an account from above: '))
+        config.set_appid_from_account_id(acct_selection)
+        msg = "Using account: {} / {}".format(accts[acct_selection]["name"],
+                                              accts[acct_selection]["appid"])
+        log.info(msg)
 
     if config.debug:
         log.setLevel(logging.DEBUG)
@@ -134,21 +80,25 @@ def main(argv):
     # Ask the user for their password.. we do this once at the beginning, and
     # we keep it in memory for as long as this tool is running. Its never ever
     # written out or cached to disk anywhere.
-    password = getpass.getpass()
+    try:
+        password = getpass.getpass()
+    except KeyboardInterrupt:
+        print('')
+        sys.exit(1)
 
     # Generate our initial OktaSaml client and handle any exceptions thrown.
     # Generally these are input validation issues.
     try:
         okta_client = okta.OktaSaml(config.org, config.username, password)
     except okta.EmptyInput:
-        log.error('Cannot enter a blank string for any input')
+        log.fatal('Cannot enter a blank string for any input')
         sys.exit(1)
 
     # Authenticate the Okta client. If necessary, we will ask for MFA input.
     try:
         okta_client.auth()
     except okta.InvalidPassword:
-        log.error('Invalid Username ({user}) or Password'.format(
+        log.fatal('Invalid Username ({user}) or Password'.format(
             user=config.username))
         sys.exit(1)
     except okta.PasscodeRequired as e:
@@ -157,8 +107,8 @@ def main(argv):
         while not verified:
             passcode = user_input('MFA Passcode: ')
             verified = okta_client.validate_mfa(e.fid, e.state_token, passcode)
-    except okta.UnknownError as e:
-        log.fatal('Fatal error.')
+    except okta.UnknownError as err:
+        log.fatal("Fatal error: {}".format(err))
         sys.exit(1)
 
     # Once we're authenticated with an OktaSaml client object, we can use that
@@ -166,6 +116,7 @@ def main(argv):
     # Credentials.
     session = None
     role_selection = None
+    retries = 0
     while True:
         # If an AWS Session object has been created already, lets check if its
         # still valid. If it is, sleep a bit and skip to the next execution of
@@ -203,6 +154,14 @@ def main(argv):
             log.warning('Connection error... will retry')
             time.sleep(5)
             continue
+
+        except aws.InvalidSaml:
+            log.error('SAML response from AWS is invalid. Retrying...')
+            time.sleep(1)
+            retries += 1
+            if retries > 2:
+                log.fatal('SAML failure. Please reauthenticate.')
+                sys.exit(1)
 
         # If we're not running in re-up mode, once we have the assertion
         # and creds, go ahead and quit.
