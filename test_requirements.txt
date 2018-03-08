@@ -3,3 +3,4 @@ coverage
 mock
 pycodestyle
 pyflakes
+coveralls

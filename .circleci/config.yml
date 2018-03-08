@@ -23,7 +23,8 @@ jobs:
           name: run tests
           command: |
             . venv/bin/activate
-            nosetests -vv --with-coverage --cover-erase --cover-package=aws_okta_keyman
+            coverage run --source=aws_okta_keyman setup.py test
+            coveralls
       - run:
           name: pycodestyle
           command: |
@@ -42,3 +43,6 @@ jobs:
     <<: *test-template
     docker:
       - image: circleci/python:3.6
+notify:
+  webhooks:
+    - url: https://coveralls.io/webhook?repo_token=2r3GsmExITkdgJBGEnGquBymNzhex0UWQ

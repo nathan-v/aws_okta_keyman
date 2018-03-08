@@ -1,10 +1,10 @@
-[![Apache](https://img.shields.io/badge/license-Apache-blue.svg)](https://github.com/nathan-v/aws_okta_keyman/blob/master/LICENSE.txt) [![PyPI version](https://badge.fury.io/py/aws-okta-keyman.svg)](https://badge.fury.io/py/aws-okta-keyman)
+[![Apache](https://img.shields.io/badge/license-Apache-blue.svg)](https://github.com/nathan-v/aws_okta_keyman/blob/master/LICENSE.txt) [![PyPI version](https://badge.fury.io/py/aws-okta-keyman.svg)](https://badge.fury.io/py/aws-okta-keyman) [![Python versions](https://img.shields.io/pypi/pyversions/aws-okta-keyman.svg?style=flat-square)](https://pypi.python.org/pypi/aws-okta-keyman/0.2.0)
 
-[![CircleCI](https://circleci.com/gh/nathan-v/aws_okta_keyman.svg?style=svg&circle-token=93e91f099440edc9f62378bb3f056af8b0841231)](https://circleci.com/gh/nathan-v/aws_okta_keyman) [![CC GPA](https://codeclimate.com/github/nathan-v/aws_okta_keyman/badges/gpa.svg)](https://codeclimate.com/github/nathan-v/aws_okta_keyman) [![CC Issues](https://codeclimate.com/github/nathan-v/aws_okta_keyman/badges/issue_count.svg)](https://codeclimate.com/github/nathan-v/aws_okta_keyman) [![CC Coverage](https://codeclimate.com/github/nathan-v/aws_okta_keyman/badges/coverage.svg)](https://codeclimate.com/github/nathan-v/aws_okta_keyman) 
+[![CircleCI](https://circleci.com/gh/nathan-v/aws_okta_keyman.svg?style=svg&circle-token=93e91f099440edc9f62378bb3f056af8b0841231)](https://circleci.com/gh/nathan-v/aws_okta_keyman) [![CC GPA](https://codeclimate.com/github/nathan-v/aws_okta_keyman/badges/gpa.svg)](https://codeclimate.com/github/nathan-v/aws_okta_keyman) [![CC Issues](https://codeclimate.com/github/nathan-v/aws_okta_keyman/badges/issue_count.svg)](https://codeclimate.com/github/nathan-v/aws_okta_keyman) [![Coverage Status](https://coveralls.io/repos/github/nathan-v/aws_okta_keyman/badge.svg?branch=master)](https://coveralls.io/github/nathan-v/aws_okta_keyman?branch=master)
 
 # AWS Okta Keyman
 
-This is a simple command-line tools for logging into Okta and generating
+This is a simple command-line tool for logging into Okta and generating
 temporary Amazon AWS Credentials. This tool makes it easy and secure for your
 developers to generate short-lived, [logged and user-attributed][tracking]
 credentials that can be used for any of the Amazon SDK libraries or CLI tools.
@@ -33,7 +33,7 @@ successful the user may close the browser or tab.
 
 ## Multiple AWS Roles
 
-AWS Keyman supports multiple AWS roles when configued. The user is prompted to
+AWS Okta Keyman supports multiple AWS roles when configued. The user is prompted to
 select the role they wish to use before the temporary keys are generated. An example
 of this is shown here:
 
@@ -51,7 +51,7 @@ Amazon IAM only supports Federated Login sessions that last up to *1 hour*. For
 developers, it can be painful to re-authenticate every hour during your work
 day. This is made much worse if your organization requires MFA on each login.
 
-You may run the AWS Keyman in "reup" mode to get around this. The tool
+You may run the AWS Okta Keyman in "reup" mode to get around this. The tool
 will continue to run in a sleep loop periodically reaching out to Okta,
 generating a new SAML Assertion, and then generating updated Amazon AWS
 credentials. This can run for as long as your Okta administrator has allowed
@@ -86,7 +86,8 @@ Before you can use this tool, your Okta administrator needs to set up
 ## Background
 This is a hard fork of [nd_okta_auth][nd_okta_auth] by [Nextdoor.com, Inc.][nextdoorinc].
 I decided to move ahead this way as I wanted to be able to move quickly and add
-features independently of the existing implementation.
+features independently of the existing implementation. A big thank you to @diranged
+for the original work that this comes from.
 
 The original code is heavily based on the previous work done by
 [ThoughtWorksInc][thoughtworksinc] on their [OktaAuth][oktaauth] and [AWS Role
