@@ -11,3 +11,4 @@ aws_okta_keyman.egg-info
 build/
 htmlcov/
 __pycache__
+.eggs/
