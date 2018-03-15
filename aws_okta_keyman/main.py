@@ -165,6 +165,7 @@ def main(argv):
     # object to get a fresh SAMLResponse repeatedly and refresh our AWS
     # Credentials.
     session = None
+    role_selection = None
     while True:
         # If an AWS Session object has been created already, lets check if its
         # still valid. If it is, sleep a bit and skip to the next execution of
@@ -174,16 +175,22 @@ def main(argv):
             time.sleep(15)
             continue
 
-        try:
-            # Only set up the session if it's still None
-            if session is None:
-                assertion = okta_client.get_assertion(appid=config.appid,
-                                                      apptype='amazon_aws')
-                session = aws.Session(assertion, profile=config.name)
+        log.info('Getting SAML Assertion from {org}'.format(
+            org=config.org))
 
-            log.info('Getting SAML Assertion from {org}'.format(
-                org=config.org))
+        try:
+            assertion = okta_client.get_assertion(appid=config.appid,
+                                                  apptype='amazon_aws')
+            session = aws.Session(assertion, profile=config.name)
+
+            # If role_selection is set we're in a reup loop. Re-set the role on
+            # the session to prevent the user being prompted for the role again
+            # on each subsequent renewal.
+            if role_selection is not None:
+                session.set_role(role_selection)
+
             session.assume_role()
+
         except aws.MultipleRoles:
             log.warning('Multiple AWS roles found; please select one')
             roles = session.available_roles()
