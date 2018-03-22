@@ -61,6 +61,7 @@ class Credentials(object):
         try:
             config.read_file(open(self.filename, 'r'))
         except IOError:
+            log.debug("Unable to open {}".format(self.filename))
             pass
 
         if not config.has_section(name):
@@ -71,25 +72,23 @@ class Credentials(object):
             os.chmod(self.filename, 0o600)
             config.write(configfile)
 
-    def add_profile(self, name, region, access_key, secret_key, session_token):
+    def add_profile(self, name, region, creds):
         '''Writes out a set of AWS Credentials to disk.
 
         args:
             name: The profile name to write to
             region: The region to use as the default region for this profile
-            access_key: The AWS_ACCESS_KEY_ID
-            secret_key: The AWS_SECRET_ACCESS_KEY
-            session_token: The AWS_SESSION_TOKEN
+            creds: AWS creds dict
         '''
         name = str(name)
         self._add_profile(
             name,
             {'output': 'json',
              'region': str(region),
-             'aws_access_key_id': str(access_key),
-             'aws_secret_access_key': str(secret_key),
-             'aws_security_token': str(session_token),
-             'aws_session_token': str(session_token)
+             'aws_access_key_id': str(creds['AccessKeyId']),
+             'aws_secret_access_key': str(creds['SecretAccessKey']),
+             'aws_security_token': str(creds['SessionToken']),
+             'aws_session_token': str(creds['SessionToken'])
              })
 
         log.info('Wrote profile "{name}" to {file}'.format(
@@ -133,10 +132,11 @@ class Session(object):
         self.writer = Credentials(cred_file)
 
         # Populated by self.assume_role()
-        self.aws_access_key_id = None
-        self.aws_secret_access_key = None
-        self.aws_session_token = None
-        self.expiration = None
+        self.creds = {
+                'AccessKeyId': None,
+                'SecretAccessKey': None,
+                'SessionToken': None,
+                'Expiration': None}
         self.session_token = None
         self.role = None
 
@@ -159,13 +159,18 @@ class Session(object):
         '''
         # Consider the tokens expired when they have 10m left
         try:
+            msg = ("Session Expiration: {}  // Now: {}".format(
+                self.creds['Expiration'],
+                datetime.datetime.utcnow())
+            )
+            log.debug(msg)
             buffer = datetime.timedelta(seconds=600)
             now = datetime.datetime.utcnow()
-            expir = datetime.datetime.strptime(str(self.expiration),
+            expir = datetime.datetime.strptime(str(self.creds['Expiration']),
                                                '%Y-%m-%d %H:%M:%S+00:00')
 
             return (now + buffer) < expir
-        except ValueError:
+        except (ValueError, TypeError):
             return False
 
     def set_role(self, role_index):
@@ -199,13 +204,7 @@ class Session(object):
             RoleArn=self.role['role'],
             PrincipalArn=self.role['principle'],
             SAMLAssertion=self.assertion.encode())
-        creds = session['Credentials']
-
-        self.aws_access_key_id = creds['AccessKeyId']
-        self.aws_secret_access_key = creds['SecretAccessKey']
-        self.session_token = creds['SessionToken']
-        self.expiration = creds['Expiration']
-
+        self.creds = session['Credentials']
         self._write()
 
     def _write(self):
@@ -213,8 +212,6 @@ class Session(object):
         self.writer.add_profile(
             name=self.profile,
             region=self.region,
-            access_key=self.aws_access_key_id,
-            secret_key=self.aws_secret_access_key,
-            session_token=self.session_token)
+            creds=self.creds)
         log.info('Session expires at {time}'.format(
-            time=self.expiration))
+            time=self.creds['Expiration']))
