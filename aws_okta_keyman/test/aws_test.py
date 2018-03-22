@@ -25,9 +25,10 @@ class TestCredentials(unittest.TestCase):
         profile.add_profile(
             name='TestProfile',
             region='us-east-1',
-            access_key='key',
-            secret_key='secret',
-            session_token='token')
+            creds={
+                'AccessKeyId': 'key',
+                'SecretAccessKey': 'secret',
+                'SessionToken': 'token'})
 
         fake_parser.assert_has_calls([
             mock.call.has_section('TestProfile'),
@@ -59,9 +60,10 @@ class TestCredentials(unittest.TestCase):
         profile.add_profile(
             name='TestProfile',
             region='us-east-1',
-            access_key='key',
-            secret_key='secret',
-            session_token='token')
+            creds={
+                'AccessKeyId': 'key',
+                'SecretAccessKey': 'secret',
+                'SessionToken': 'token'})
 
         open_mock.assert_has_calls([
             mock.call('/test', 'r'),
@@ -133,9 +135,10 @@ class TestSesssion(unittest.TestCase):
         self.assertEquals(None, ret)
 
         # Verify add_profile is called with the correct args
+        creds = {'AccessKeyId': None, 'SecretAccessKey': None,
+                 'SessionToken': None, 'Expiration': None}
         mock_add_profile.assert_has_calls([
-            mock.call(access_key=None, name='default',
-                      region='us-east-1', secret_key=None, session_token=None)
+            mock.call(creds=creds, name='default', region='us-east-1')
         ])
 
     @mock.patch('aws_okta_keyman.aws.Session._write')
@@ -156,10 +159,10 @@ class TestSesssion(unittest.TestCase):
         ret = session.assume_role()
 
         self.assertEquals(None, ret)
-        self.assertEquals('AKI', session.aws_access_key_id)
-        self.assertEquals('squirrel', session.aws_secret_access_key)
-        self.assertEquals('token', session.session_token)
-        self.assertEquals('never', session.expiration)
+        self.assertEquals('AKI', session.creds['AccessKeyId'])
+        self.assertEquals('squirrel', session.creds['SecretAccessKey'])
+        self.assertEquals('token', session.creds['SessionToken'])
+        self.assertEquals('never', session.creds['Expiration'])
 
         # Verify _write is called correctly
         mock_write.assert_has_calls([
