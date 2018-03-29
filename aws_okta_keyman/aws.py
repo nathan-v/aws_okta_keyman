@@ -213,5 +213,7 @@ class Session(object):
             name=self.profile,
             region=self.region,
             creds=self.creds)
+        log.info('Current time is {time}'.format(
+            time=datetime.datetime.utcnow()))
         log.info('Session expires at {time}'.format(
             time=self.creds['Expiration']))

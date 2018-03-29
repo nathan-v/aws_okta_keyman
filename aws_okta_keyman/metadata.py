@@ -14,7 +14,7 @@
 # Copyright 2018 Nathan V
 
 
-__version__ = '0.2.1'
+__version__ = '0.3.0'
 __desc__ = 'AWS Okta Keyman'
 __desc_long__ = ('''
 ===============

@@ -239,7 +239,7 @@ class Okta(object):
         webbrowser.open_new('http://127.0.0.1:65432/duo.html')
 
         while ret['status'] != 'SUCCESS':
-            log.info('Waiting for Okta Verification...')
+            log.info('Waiting for Duo Auth success...')
             time.sleep(sleep)
 
             if ret.get('factorResult', 'REJECTED') == 'REJECTED':
@@ -341,7 +341,8 @@ class OktaSaml(Okta):
 
         try:
             resp.raise_for_status()
-        except requests.exceptions.HTTPError as e:
+        except (requests.exceptions.HTTPError,
+                requests.exceptions.ConnectionError) as e:
             log.error('Unknown error: {msg}'.format(
                 msg=str(e.response.__dict__)))
             raise UnknownError()

@@ -59,6 +59,40 @@ your Login Session to be - often a full work day.
 
 See the `--reup` commandline option for help here!
 
+## Config file .. predefined settings for you or your org
+
+The config file, which defaults to `~/.config/aws_okta_keyman.yml`, allows you to
+pre-set things like your username, Okta organization name (subdomain), and AWS accounts and App IDs to make this script simpler to use. This also supports username assumption
+based on the current user when the username or email is configured as
+`automatic-username` if usernames only are an option or
+`automatic-username@example.com` if you need full emails. Arguments will always
+be preferred to the config file so you can override what's in the config file
+as needed on each run of the tool.
+
+Example config file:
+
+    username: automatic-username@example.com
+    org: example
+    accounts:
+      - name: Test
+        appid: exampleAppIDFromOkta/123
+      - name: Dev
+        appid: exampleAppIDFromOkta/234
+      - name: Prod
+        appid: exampleAppIDFromOkta/345
+
+When used you'll get a similar interface to AWS Role selection but for your AWS
+accounts:
+
+    $ aws_okta_keyman
+    16:56:47   (INFO) AWS Okta Keyman v0.3.0
+    16:56:47   (WARNING) No app ID provided; please select from available AWS accounts
+    [0] Account: Test
+    [1] Account: Dev
+    [2] Account: Prod
+    Select an account from above: 0
+    16:56:49   (INFO) Using account: Test / exampleAppIDFromOkta/123
+
 # Usage
 
 For detailed usage instructions, see the `--help` commandline argument.
