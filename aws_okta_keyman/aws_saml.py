@@ -17,29 +17,33 @@
 # WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
+"""AWS SAML assertion parser."""
 import base64
 import xml.etree.ElementTree as ET
 
 
 class SamlAssertion:
+    """Handle the AWS SAML assertion."""
 
     def __init__(self, assertion):
         self.assertion = assertion
 
     @staticmethod
     def split_roles(roles):
+        """Split out the roles from the string response."""
         return [(y.strip())
                 for y
                 in roles.text.split(',')]
 
     @staticmethod
     def sort_roles(roles):
+        """Sort and return the AWS roles."""
         return sorted(roles,
                       key=lambda role: 'saml-provider' in role)
 
     def roles(self):
-        attributes = ET.fromstring(self.assertion).getiterator(
+        """Extract role information from the assertion."""
+        attributes = ET.fromstring(self.assertion).iter(
             '{urn:oasis:names:tc:SAML:2.0:assertion}Attribute')
 
         name = 'https://aws.amazon.com/SAML/Attributes/Role'
@@ -47,7 +51,7 @@ class SamlAssertion:
                             in attributes
                             if x.get('Name') == name]
 
-        roles_values = [(x.getiterator(
+        roles_values = [(x.iter(
             '{urn:oasis:names:tc:SAML:2.0:assertion}AttributeValue'))
                         for x
                         in roles_attributes]
@@ -58,4 +62,5 @@ class SamlAssertion:
                 in roles_values[0]]
 
     def encode(self):
+        """b64 encoding handler."""
         return base64.b64encode(self.assertion).decode()

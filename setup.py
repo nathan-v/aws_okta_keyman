@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+"""Setup the package."""
 import os
 import sys
 
@@ -27,16 +27,21 @@ DIR = os.path.dirname(os.path.realpath(__file__))
 
 
 class PycodestyleCommand(Command):
+    """Pycodestyle check."""
+
     description = 'Pycodestyle Lint Checks'
     user_options = []
 
     def initialize_options(self):
+        """Override to nothing."""
         pass
 
     def finalize_options(self):
+        """Override to nothing."""
         pass
 
     def run(self):
+        """Execute pycodestyle check."""
         # Don't import the pycodestyle module until now because setup.py needs
         # to be able to install pycodestyle if its missing.
         import pycodestyle
@@ -48,16 +53,21 @@ class PycodestyleCommand(Command):
 
 
 class PyflakesCommand(Command):
+    """Pyflakes check."""
+
     description = 'Pyflakes Checks'
     user_options = []
 
     def initialize_options(self):
+        """Override to nothing."""
         pass
 
     def finalize_options(self):
+        """Override to nothing."""
         pass
 
     def run(self):
+        """Execute pyflakes check."""
         # Don't import the pyflakes code until now because setup.py needs to be
         # able to install Pyflakes if its missing. This localizes the import to
         # only after the setuptools code has run and verified everything is
@@ -108,4 +118,5 @@ setup(
         'pycodestyle': PycodestyleCommand,
         'pyflakes': PyflakesCommand,
     },
+    zip_safe=True,
 )

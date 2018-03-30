@@ -11,6 +11,7 @@
 # limitations under the License.
 #
 # Copyright 2018 Nathan V
+"""All the Duo things."""
 
 from multiprocessing import Process
 import sys
@@ -22,19 +23,20 @@ else:
 
 
 class QuietHandler(BaseHTTPRequestHandler, object):
-    '''
-    We have to do this HTTP sever siliness because the Duo widget has to be
+    """We have to do this HTTP sever siliness because the Duo widget has to be
     presented over HTTP or HTTPS or the callback won't work.
-    '''
+    """
+
     def __init__(self, html, *args):
         self.html = html
         super(QuietHandler, self).__init__(*args)
 
     def log_message(self, _format, *args):
-        # This quiets the server log to prevent request logging in the terminal
+        """Mute the server log."""
         pass
 
     def do_GET(self):
+        """Handle the GET and displays the Duo iframe."""
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
@@ -43,12 +45,17 @@ class QuietHandler(BaseHTTPRequestHandler, object):
 
 
 class Duo:
+    """Does all the background work needed to serve the Duo iframe."""
+
     def __init__(self, details, state_token):
         self.details = details
         self.token = state_token
         self.html = None
 
     def trigger_duo(self):
+        """Start the webserver with the data needed to display the Duo
+        iframe for the user to see.
+        """
         host = self.details['host']
         sig = self.details['signature']
         script = self.details['_links']['script']['href']
@@ -66,15 +73,17 @@ class Duo:
                               hst=host, sig=sig,
                               cb=callback)
 
-        p = Process(target=self.duo_webserver)
-        p.start()
+        proc = Process(target=self.duo_webserver)
+        proc.start()
         time.sleep(10)
-        p.terminate()
+        proc.terminate()
 
     def duo_webserver(self):
+        """HTTP webserver."""
         server_address = ('127.0.0.1', 65432)
         httpd = HTTPServer(server_address, self.handler_with_html)
         httpd.serve_forever()
 
     def handler_with_html(self, *args):
+        """Call the handler and include the HTML."""
         QuietHandler(self.html, *args)
