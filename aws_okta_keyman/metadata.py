@@ -12,7 +12,7 @@
 #
 # Copyright 2018 Nextdoor.com, Inc
 # Copyright 2018 Nathan V
-
+"""Package metadata."""
 
 __version__ = '0.3.0'
 __desc__ = 'AWS Okta Keyman'

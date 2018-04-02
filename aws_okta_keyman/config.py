@@ -12,7 +12,10 @@
 #
 # Copyright 2018 Nextdoor.com, Inc
 # Copyright 2018 Nathan V
-
+"""
+Config module is a config object that handles passed-in args and an optional
+local config file.
+"""
 import argparse
 import getpass
 import logging
@@ -21,10 +24,12 @@ import os
 import yaml
 from aws_okta_keyman.metadata import __version__
 
-log = logging.getLogger(__name__)
+LOG = logging.getLogger(__name__)
 
 
 class Config:
+    """Config class for all tool configuration settings."""
+
     def __init__(self, argv):
         self.argv = argv
         self.config = None
@@ -38,9 +43,11 @@ class Config:
         self.name = 'default'
 
     def set_appid_from_account_id(self, account_id):
+        """Take an account ID (list index) and sets the appid based on that."""
         self.appid = self.accounts[account_id]['appid']
 
     def validate(self):
+        """Ensure we have all the settings we need before continuing."""
         if self.appid is None:
             if not self.accounts:
                 raise ValueError('The appid parameter is required if accounts '
@@ -56,6 +63,9 @@ class Config:
                                               getpass.getuser())
 
     def get_config(self):
+        """Get the config and set everything up based on the args and/or local
+        config file.
+        """
         file = os.path.expanduser('~') + '/.config/aws_okta_keyman.yml'
         if '-w' in self.argv[1:] or '--writepath' in self.argv[1:]:
             self.parse_args(main_required=False)
@@ -73,7 +83,9 @@ class Config:
             self.parse_args()
         self.validate()
 
-    def usage_epilog(self):
+    @staticmethod
+    def usage_epilog():
+        """Epilog string for argparse."""
         epilog = (
             '** Application ID **\n'
             'The ApplicationID is actually a two part piece of the redirect\n'
@@ -93,7 +105,7 @@ class Config:
         return epilog
 
     def parse_args(self, main_required=True):
-        '''Returns a configured ArgumentParser for the CLI options'''
+        """Return a configured ArgumentParser for the CLI options."""
         arg_parser = argparse.ArgumentParser(
             prog=self.argv[0],
             formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -124,6 +136,9 @@ class Config:
 
     @staticmethod
     def main_args(arg_group, required=False):
+        """Handle primary arguments for the script; things we must have to run.
+        Can be marked as optional if we have a config file.
+        """
         arg_group.add_argument('-o', '--org', type=str,
                                help=(
                                    'Okta Organization Name - ie, if your '
@@ -150,6 +165,7 @@ class Config:
 
     @staticmethod
     def optional_args(optional_args):
+        """Define the always-optional arguments."""
         optional_args.add_argument('-V', '--version', action='version',
                                    version=__version__)
         optional_args.add_argument('-D', '--debug', action='store_true',
@@ -173,25 +189,29 @@ class Config:
                                    default='~/.config/aws_okta_keyman.yml')
 
     def parse_config(self, filename):
+        """Parse a configuration file and set the variables from it."""
         if os.path.isfile(filename):
             config = yaml.load(open(filename, 'r'))
         else:
             raise IOError("File not found: {}".format(filename))
 
-        log.debug("YAML loaded config: {}".format(config))
+        LOG.debug("YAML loaded config: {}".format(config))
 
         for key, value in config.items():
             if getattr(self, key) is None:  # Only overwrite None not args
                 setattr(self, key, value)
 
     def write_config(self):
+        """Use provided arguments and existing config to write an updated
+        config file.
+        """
         file_path = os.path.expanduser(self.writepath)
         if os.path.isfile(file_path):
             config = yaml.load(open(file_path, 'r'))
         else:
             config = {}
 
-        log.debug("YAML loaded config: {}".format(config))
+        LOG.debug("YAML loaded config: {}".format(config))
 
         args_dict = dict(vars(self))
 
@@ -210,7 +230,7 @@ class Config:
         if config['accounts'] is None:
             del config['accounts']
 
-        log.debug("YAML being saved: {}".format(config))
+        LOG.debug("YAML being saved: {}".format(config))
 
         with open(file_path, 'w') as outfile:
             yaml.safe_dump(config, outfile, default_flow_style=False)
