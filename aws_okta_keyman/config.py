@@ -41,6 +41,7 @@ class Config:
         self.debug = None
         self.appid = None
         self.name = 'default'
+        self.oktapreview = None
 
     def set_appid_from_account_id(self, account_id):
         """Take an account ID (list index) and sets the appid based on that."""
@@ -187,6 +188,13 @@ class Config:
         optional_args.add_argument('-w', '--writepath', type=str,
                                    help='Full config file path to write to',
                                    default='~/.config/aws_okta_keyman.yml')
+        optional_args.add_argument('-p', '--oktapreview', action='store_true',
+                                   help=(
+                                       'Use oktapreview domain. This is '
+                                       'useful for testing outside of your '
+                                       'production Okta organization.'
+                                   ),
+                                   default=False)
 
     def parse_config(self, filename):
         """Parse a configuration file and set the variables from it."""
@@ -224,7 +232,9 @@ class Config:
 
         config = dict(vars(self))
         # Remove args we don't want to save to a config file
-        for var in ['name', 'appid', 'argv', 'writepath', 'config', 'debug']:
+        ignore = ['name', 'appid', 'argv', 'writepath', 'config', 'debug',
+                  'oktapreview']
+        for var in ignore:
             del config[var]
 
         if config['accounts'] is None:

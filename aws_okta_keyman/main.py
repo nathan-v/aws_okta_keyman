@@ -89,7 +89,11 @@ def main(argv):
     # Generate our initial OktaSaml client and handle any exceptions thrown.
     # Generally these are input validation issues.
     try:
-        okta_client = okta.OktaSaml(config.org, config.username, password)
+        if config.oktapreview is True:
+            okta_client = okta.OktaSaml(config.org, config.username, password,
+                                        oktapreview=True)
+        else:
+            okta_client = okta.OktaSaml(config.org, config.username, password)
     except okta.EmptyInput:
         log.fatal('Cannot enter a blank string for any input')
         sys.exit(1)

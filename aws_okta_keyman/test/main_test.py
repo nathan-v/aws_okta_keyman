@@ -44,6 +44,33 @@ class MainTest(unittest.TestCase):
 
         okta_mock.assert_called_with('server', 'username', 'test_password')
 
+    @mock.patch('aws_okta_keyman.aws.Session')
+    @mock.patch('aws_okta_keyman.okta.OktaSaml')
+    @mock.patch('aws_okta_keyman.main.Config')
+    @mock.patch('getpass.getpass')
+    def test_entry_point_with_preview(self, pass_mock, config_mock, okta_mock,
+                                      aws_mock):
+        # Mock out the password getter and return a simple password
+        pass_mock.return_value = 'test_password'
+
+        # Just mock out the entire Okta object, we won't really instantiate it
+        okta_mock.return_value = mock.MagicMock()
+        aws_mock.return_value = mock.MagicMock()
+
+        # Mock out the arguments that were passed in
+        fake_parser = mock.MagicMock(name='fake_parser')
+        fake_parser.org = 'server'
+        fake_parser.username = 'username'
+        fake_parser.debug = True
+        fake_parser.reup = 0
+        fake_parser.oktapreview = True
+        config_mock.return_value = fake_parser
+
+        main.main('test')
+
+        okta_mock.assert_called_with('server', 'username', 'test_password',
+                                     oktapreview=True)
+
     @mock.patch('aws_okta_keyman.main.user_input')
     @mock.patch('aws_okta_keyman.aws.Session')
     @mock.patch('aws_okta_keyman.okta.OktaSaml')
