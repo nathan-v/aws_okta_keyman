@@ -422,8 +422,6 @@ class ConfigTest(unittest.TestCase):
         config.appid = 'app/id'
         config.org = 'example'
 
-        expected_path = os.path.expanduser(config.writepath)
-
         yml = ("username: user@example.com\n"
                "org: example\n"
                "appid app/id\n")
@@ -441,8 +439,6 @@ class ConfigTest(unittest.TestCase):
         config.username = 'example@example.com'
         config.appid = 'app/id'
         config.org = 'example'
-
-        expected_path = os.path.expanduser(config.writepath)
 
         yml = ("username: user@example.com\n"
                "org: example\n"
