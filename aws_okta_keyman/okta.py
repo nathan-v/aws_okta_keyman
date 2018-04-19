@@ -34,6 +34,7 @@ if sys.version_info[0] < 3:  # pragma: no cover
 log = logging.getLogger(__name__)
 
 BASE_URL = 'https://{organization}.okta.com'
+PREVIEW_BASE_URL = 'https://{organization}.oktapreview.com'
 
 
 class BaseException(Exception):
@@ -76,8 +77,12 @@ class Okta(object):
     See OktaSaml for a more useful object.
     '''
 
-    def __init__(self, organization, username, password):
-        self.base_url = BASE_URL.format(organization=organization)
+    def __init__(self, organization, username, password, oktapreview=False):
+        if oktapreview:
+            self.base_url = PREVIEW_BASE_URL.format(organization=organization)
+        else:
+            self.base_url = BASE_URL.format(organization=organization)
+
         log.debug('Base URL Set to: {url}'.format(url=self.base_url))
 
         # Validate the inputs are reasonably sane

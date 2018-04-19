@@ -188,7 +188,7 @@ class ConfigTest(unittest.TestCase):
             '-n', 'profilename',
             '-c', 'config_file_path',
             '-w', 'write_file_path',
-            '-D', '-r'
+            '-D', '-r', '-p'
         ]
         config = Config(argv)
         config.parse_args(main_required=True)
@@ -201,6 +201,7 @@ class ConfigTest(unittest.TestCase):
         self.assertEquals(config.writepath, 'write_file_path')
         self.assertEquals(config.debug, True)
         self.assertEquals(config.reup, True)
+        self.assertEquals(config.oktapreview, True)
 
     def test_parse_args_verify_all_parsed_full(self):
         argv = [
