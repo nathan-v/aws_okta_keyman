@@ -198,12 +198,15 @@ class Config:
 
     def parse_config(self, filename):
         """Parse a configuration file and set the variables from it."""
-        if os.path.isfile(filename):
-            config = yaml.load(open(filename, 'r'))
-        else:
-            raise IOError("File not found: {}".format(filename))
-
-        LOG.debug("YAML loaded config: {}".format(config))
+        try:
+            if os.path.isfile(filename):
+                config = yaml.load(open(filename, 'r'))
+                LOG.debug("YAML loaded config: {}".format(config))
+            else:
+                raise IOError("File not found: {}".format(filename))
+        except (yaml.parser.ParserError, yaml.scanner.ScannerError):
+            LOG.error('Error parsing config file; invalid YAML.')
+            raise
 
         for key, value in config.items():
             if getattr(self, key) is None:  # Only overwrite None not args
@@ -214,12 +217,15 @@ class Config:
         config file.
         """
         file_path = os.path.expanduser(self.writepath)
-        if os.path.isfile(file_path):
-            config = yaml.load(open(file_path, 'r'))
-        else:
+        try:
+            if os.path.isfile(file_path):
+                config = yaml.load(open(file_path, 'r'))
+                LOG.debug("YAML loaded config: {}".format(config))
+            else:
+                config = {}
+        except (yaml.parser.ParserError, yaml.scanner.ScannerError):
             config = {}
-
-        LOG.debug("YAML loaded config: {}".format(config))
+            LOG.error('Error parsing config file; invalid YAML.')
 
         args_dict = dict(vars(self))
 

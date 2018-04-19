@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 import unittest
 import os
 import sys
+import yaml
 from aws_okta_keyman.config import Config
 if sys.version_info[0] < 3:  # Python 2
     import mock
@@ -231,11 +232,11 @@ class ConfigTest(unittest.TestCase):
         isfile_mock.return_value = True
 
         config = Config(['aws_okta_keyman.py'])
-        yaml = ("username: user@example.com\n"
-                "org: example\n"
-                "appid: app/id\n")
+        yml = ("username: user@example.com\n"
+               "org: example\n"
+               "appid: app/id\n")
 
-        m = mock.mock_open(read_data=yaml)
+        m = mock.mock_open(read_data=yml)
         with mock.patch('aws_okta_keyman.config.open', m):
                 config.parse_config('./.config/aws_okta_keyman.yml')
 
@@ -251,13 +252,13 @@ class ConfigTest(unittest.TestCase):
         config.appid = 'mysupercoolapp/id'
         config.org = 'foobar'
         config.username = 'test'
-        yaml = ("username: user@example.com\n"
-                "org: example\n"
-                "appid: app/id\n")
+        yml = ("username: user@example.com\n"
+               "org: example\n"
+               "appid: app/id\n")
 
-        m = mock.mock_open(read_data=yaml)
+        m = mock.mock_open(read_data=yml)
         with mock.patch('aws_okta_keyman.config.open', m):
-                config.parse_config('./.config/aws_okta_keyman.yml')
+            config.parse_config('./.config/aws_okta_keyman.yml')
 
         # Make sure we're getting the args not the config values
         self.assertEquals(config.appid, 'mysupercoolapp/id')
@@ -270,20 +271,48 @@ class ConfigTest(unittest.TestCase):
             config.parse_config('./.config/aws_okta_keyman.yml')
 
     @mock.patch('aws_okta_keyman.config.os.path.isfile')
+    def test_parse_config_yaml_scan_error(self, isfile_mock):
+        isfile_mock.return_value = True
+
+        config = Config(['aws_okta_keyman.py'])
+        yml = ("username: user@example.com\n"
+               "org: example\n"
+               "appid app/id\n")
+
+        m = mock.mock_open(read_data=yml)
+        with mock.patch('aws_okta_keyman.config.open', m):
+            with self.assertRaises(yaml.scanner.ScannerError):
+                config.parse_config('./.config/aws_okta_keyman.yml')
+
+    @mock.patch('aws_okta_keyman.config.os.path.isfile')
+    def test_parse_config_yaml_parse_error(self, isfile_mock):
+        isfile_mock.return_value = True
+
+        config = Config(['aws_okta_keyman.py'])
+        yml = ("username: user@example.com\n"
+               "org: example\n"
+               "- appid: foo\n")
+
+        m = mock.mock_open(read_data=yml)
+        with mock.patch('aws_okta_keyman.config.open', m):
+            with self.assertRaises(yaml.parser.ParserError):
+                config.parse_config('./.config/aws_okta_keyman.yml')
+
+    @mock.patch('aws_okta_keyman.config.os.path.isfile')
     def test_write_config(self, isfile_mock):
         isfile_mock.return_value = True
 
         config = Config(['aws_okta_keyman.py'])
         config.writepath = './.config/aws_okta_keyman.yml'
         config.username = 'example@example.com'
-        yaml = ("username: user@example.com\n"
-                "org: example\n"
-                "appid: app/id\n"
-                "accounts:\n"
-                "  - name: Dev\n"
-                "    appid: A123/123\n")
+        yml = ("username: user@example.com\n"
+               "org: example\n"
+               "appid: app/id\n"
+               "accounts:\n"
+               "  - name: Dev\n"
+               "    appid: A123/123\n")
 
-        m = mock.mock_open(read_data=yaml)
+        m = mock.mock_open(read_data=yml)
         with mock.patch('aws_okta_keyman.config.open', m):
                 config.write_config()
 
@@ -382,3 +411,39 @@ class ConfigTest(unittest.TestCase):
                 config.write_config()
 
         m.assert_has_calls([mock.call(expected_path, 'w')])
+
+    @mock.patch('aws_okta_keyman.config.os.path.isfile')
+    def test_write_config_scan_error(self, isfile_mock):
+        isfile_mock.return_value = True
+
+        config = Config(['aws_okta_keyman.py'])
+        config.writepath = '~/.config/aws_okta_keyman.yml'
+        config.username = 'example@example.com'
+        config.appid = 'app/id'
+        config.org = 'example'
+
+        yml = ("username: user@example.com\n"
+               "org: example\n"
+               "appid app/id\n")
+
+        m = mock.mock_open(read_data=yml)
+        with mock.patch('aws_okta_keyman.config.open', m):
+            config.write_config()
+
+    @mock.patch('aws_okta_keyman.config.os.path.isfile')
+    def test_write_config_parse_error(self, isfile_mock):
+        isfile_mock.return_value = True
+
+        config = Config(['aws_okta_keyman.py'])
+        config.writepath = '~/.config/aws_okta_keyman.yml'
+        config.username = 'example@example.com'
+        config.appid = 'app/id'
+        config.org = 'example'
+
+        yml = ("username: user@example.com\n"
+               "org: example\n"
+               "- appid: foo\n")
+
+        m = mock.mock_open(read_data=yml)
+        with mock.patch('aws_okta_keyman.config.open', m):
+            config.write_config()
