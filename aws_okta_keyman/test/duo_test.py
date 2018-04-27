@@ -1,7 +1,10 @@
 from __future__ import unicode_literals
+
 import sys
 import unittest
+
 from aws_okta_keyman import duo
+
 if sys.version_info[0] < 3:
     import mock  # Python 2
     from StringIO import StringIO as IO

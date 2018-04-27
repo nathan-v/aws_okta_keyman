@@ -22,15 +22,17 @@ AWS Session and Credential classes; how we record the creds and how we talk
 to AWS to get them.
 """
 from __future__ import unicode_literals
-from builtins import str
+
 import configparser
 import datetime
 import logging
 import os
-from os.path import expanduser
 import xml
+from builtins import str
+from os.path import expanduser
 
 import boto3
+
 from aws_okta_keyman.aws_saml import SamlAssertion
 
 LOG = logging.getLogger(__name__)

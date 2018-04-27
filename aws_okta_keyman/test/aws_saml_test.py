@@ -20,7 +20,9 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 import sys
+
 from aws_okta_keyman.aws_saml import SamlAssertion
+
 if sys.version_info < (2, 7):
     import unittest2 as unittest
 else:

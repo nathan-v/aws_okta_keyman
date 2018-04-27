@@ -22,6 +22,7 @@ import logging
 import os
 
 import yaml
+
 from aws_okta_keyman.metadata import __version__
 
 LOG = logging.getLogger(__name__)
@@ -196,20 +197,29 @@ class Config:
                                    ),
                                    default=False)
 
-    def parse_config(self, filename):
-        """Parse a configuration file and set the variables from it."""
+    @staticmethod
+    def read_yaml(filename, raise_on_error=False):
+        """Read a YAML file and optionally raise if anything goes wrong."""
+        config = {}
         try:
             if os.path.isfile(filename):
                 config = yaml.load(open(filename, 'r'))
                 LOG.debug("YAML loaded config: {}".format(config))
             else:
-                raise IOError("File not found: {}".format(filename))
+                if raise_on_error:
+                    raise IOError("File not found: {}".format(filename))
         except (yaml.parser.ParserError, yaml.scanner.ScannerError):
             LOG.error('Error parsing config file; invalid YAML.')
-            raise
+            if raise_on_error:
+                raise
+        return config
+
+    def parse_config(self, filename):
+        """Parse a configuration file and set the variables from it."""
+        config = self.read_yaml(filename, raise_on_error=True)
 
         for key, value in config.items():
-            if getattr(self, key) is None:  # Only overwrite None not args
+            if not getattr(self, key):  # Only overwrite None not args
                 setattr(self, key, value)
 
     def write_config(self):
@@ -217,15 +227,7 @@ class Config:
         config file.
         """
         file_path = os.path.expanduser(self.writepath)
-        try:
-            if os.path.isfile(file_path):
-                config = yaml.load(open(file_path, 'r'))
-                LOG.debug("YAML loaded config: {}".format(config))
-            else:
-                config = {}
-        except (yaml.parser.ParserError, yaml.scanner.ScannerError):
-            config = {}
-            LOG.error('Error parsing config file; invalid YAML.')
+        config = self.read_yaml(file_path)
 
         args_dict = dict(vars(self))
 
@@ -236,8 +238,16 @@ class Config:
             if args_dict[key] is not None:
                 setattr(self, key, args_dict[key])
 
-        config = dict(vars(self))
-        # Remove args we don't want to save to a config file
+        config_out = self.clean_config_for_write(dict(vars(self)))
+
+        LOG.debug("YAML being saved: {}".format(config_out))
+
+        with open(file_path, 'w') as outfile:
+            yaml.safe_dump(config_out, outfile, default_flow_style=False)
+
+    @staticmethod
+    def clean_config_for_write(config):
+        """Remove args we don't want to save to a config file."""
         ignore = ['name', 'appid', 'argv', 'writepath', 'config', 'debug',
                   'oktapreview']
         for var in ignore:
@@ -246,7 +256,4 @@ class Config:
         if config['accounts'] is None:
             del config['accounts']
 
-        LOG.debug("YAML being saved: {}".format(config))
-
-        with open(file_path, 'w') as outfile:
-            yaml.safe_dump(config, outfile, default_flow_style=False)
+        return config

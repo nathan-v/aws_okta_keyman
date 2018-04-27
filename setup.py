@@ -16,11 +16,9 @@
 import os
 import sys
 
-from setuptools import Command
-from setuptools import setup
-from setuptools import find_packages
+from setuptools import Command, find_packages, setup
 
-from aws_okta_keyman.metadata import __desc__, __version__, __desc_long__
+from aws_okta_keyman.metadata import __desc__, __desc_long__, __version__
 
 PACKAGE = 'aws_okta_keyman'
 DIR = os.path.dirname(os.path.realpath(__file__))
