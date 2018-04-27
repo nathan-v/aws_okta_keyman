@@ -1,6 +1,6 @@
-[![Apache](https://img.shields.io/badge/license-Apache-blue.svg)](https://github.com/nathan-v/aws_okta_keyman/blob/master/LICENSE.txt) [![PyPI version](https://badge.fury.io/py/aws-okta-keyman.svg)](https://badge.fury.io/py/aws-okta-keyman) [![Python versions](https://img.shields.io/pypi/pyversions/aws-okta-keyman.svg?style=flat-square)](https://pypi.python.org/pypi/aws-okta-keyman/0.2.0)
+[![Apache](https://img.shields.io/badge/license-Apache-blue.svg)](https://github.com/nathan-v/aws_okta_keyman/blob/master/LICENSE.txt) [![PyPI version](https://badge.fury.io/py/aws-okta-keyman.svg)](https://badge.fury.io/py/aws-okta-keyman) [![Python versions](https://img.shields.io/pypi/pyversions/aws-okta-keyman.svg?style=flat-square)](https://pypi.python.org/pypi/aws-okta-keyman/0.2.0) [![Downloads](http://pepy.tech/badge/aws-okta-keyman)](http://pepy.tech/count/aws-okta-keyman)
 
-[![CircleCI](https://circleci.com/gh/nathan-v/aws_okta_keyman.svg?style=svg&circle-token=93e91f099440edc9f62378bb3f056af8b0841231)](https://circleci.com/gh/nathan-v/aws_okta_keyman) [![CC GPA](https://codeclimate.com/github/nathan-v/aws_okta_keyman/badges/gpa.svg)](https://codeclimate.com/github/nathan-v/aws_okta_keyman) [![CC Issues](https://codeclimate.com/github/nathan-v/aws_okta_keyman/badges/issue_count.svg)](https://codeclimate.com/github/nathan-v/aws_okta_keyman) [![Coverage Status](https://coveralls.io/repos/github/nathan-v/aws_okta_keyman/badge.svg?branch=master)](https://coveralls.io/github/nathan-v/aws_okta_keyman?branch=master)
+[![CircleCI](https://circleci.com/gh/nathan-v/aws_okta_keyman/tree/master.svg?style=svg&circle-token=93e91f099440edc9f62378bb3f056af8b0841231)](https://circleci.com/gh/nathan-v/aws_okta_keyman/tree/master) [![CC GPA](https://codeclimate.com/github/nathan-v/aws_okta_keyman/badges/gpa.svg)](https://codeclimate.com/github/nathan-v/aws_okta_keyman) [![CC Issues](https://codeclimate.com/github/nathan-v/aws_okta_keyman/badges/issue_count.svg)](https://codeclimate.com/github/nathan-v/aws_okta_keyman) [![Coverage Status](https://coveralls.io/repos/github/nathan-v/aws_okta_keyman/badge.svg?branch=master)](https://coveralls.io/github/nathan-v/aws_okta_keyman?branch=master)
 
 # AWS Okta Keyman
 
@@ -30,6 +30,13 @@ optionally the Passcode can be entered in manually.
 In the case of Duo Auth a web page is opened (served locally) for the user to
 interact with Duo and select their preferred authentication method. Once Duo is
 successful the user may close the browser or tab.
+
+### Supported MFA Solutions
+
+* Okta Verify
+* Duo Auth
+* Okta OTP
+* Google Auth OTP
 
 ## Multiple AWS Roles
 
@@ -94,6 +101,15 @@ accounts:
     16:56:49   (INFO) Using account: Test / exampleAppIDFromOkta/123
 
 # Usage
+
+## Client Setup
+
+Before you can install this tool you need to have a working Python installation with pip.
+If you're not sure if you have this a good place to start would be the [Python Beginner's Guide](https://wiki.python.org/moin/BeginnersGuide/Download) .
+
+Once your Python environment is configured simply run `pip install aws-okta-keyman` to install the tool.
+
+## Running AWS Okta Keyman
 
 For detailed usage instructions, see the `--help` commandline argument.
 

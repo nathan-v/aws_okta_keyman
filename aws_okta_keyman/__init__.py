@@ -12,3 +12,4 @@
 #
 # Copyright 2018 Nextdoor.com, Inc
 # Copyright 2018 Nathan V
+"""Empty init."""

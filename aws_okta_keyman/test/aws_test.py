@@ -1,8 +1,11 @@
 from __future__ import unicode_literals
+
 import datetime
-import unittest
 import sys
+import unittest
+
 from aws_okta_keyman import aws
+
 if sys.version_info[0] < 3:  # Python 2
     import mock
 else:
