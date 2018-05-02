@@ -37,6 +37,12 @@ successful the user may close the browser or tab.
 * Duo Auth
 * Okta OTP
 * Google Auth OTP
+* SMS OTP
+* Call OTP
+* Question/Answer
+
+Windows Hello, U2F, email, and physical token (RSA, Symantec) are not supported
+at this time.
 
 ## Multiple AWS Roles
 
