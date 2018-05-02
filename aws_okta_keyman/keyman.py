@@ -26,7 +26,7 @@ from builtins import input
 import rainbow_logging_handler
 import requests
 
-from aws_okta_keyman import aws, okta
+from aws_okta_keyman import aws, okta, okta_saml
 from aws_okta_keyman.config import Config
 from aws_okta_keyman.metadata import __desc__, __version__
 
@@ -123,13 +123,14 @@ class Keyman:
         """
         try:
             if self.config.oktapreview is True:
-                self.okta_client = okta.OktaSaml(self.config.org,
-                                                 self.config.username,
-                                                 password, oktapreview=True)
+                self.okta_client = okta_saml.OktaSaml(self.config.org,
+                                                      self.config.username,
+                                                      password,
+                                                      oktapreview=True)
             else:
-                self.okta_client = okta.OktaSaml(self.config.org,
-                                                 self.config.username,
-                                                 password)
+                self.okta_client = okta_saml.OktaSaml(self.config.org,
+                                                      self.config.username,
+                                                      password)
 
         except okta.EmptyInput:
             self.log.fatal('Cannot enter a blank string for any input')
@@ -156,6 +157,17 @@ class Keyman:
                 verified = self.okta_client.validate_mfa(err.fid,
                                                          err.state_token,
                                                          passcode)
+        except okta.AnswerRequired as err:
+            self.log.warning('Question/Answer MFA response required.')
+            self.log.warning("{}".format(
+                err.factor['profile']['questionText'])
+            )
+            verified = False
+            while not verified:
+                answer = self.user_input('Answer: ')
+                verified = self.okta_client.validate_answer(err.factor['id'],
+                                                            err.state_token,
+                                                            answer)
         except okta.UnknownError as err:
             self.log.fatal("Fatal error: {}".format(err))
             sys.exit(1)
@@ -173,8 +185,12 @@ class Keyman:
 
     def start_session(self):
         """Initialize AWS session object."""
-        assertion = self.okta_client.get_assertion(appid=self.config.appid,
-                                                   apptype='amazon_aws')
+        try:
+            assertion = self.okta_client.get_assertion(appid=self.config.appid,
+                                                       apptype='amazon_aws')
+        except okta.UnknownError:
+            sys.exit(1)
+
         return aws.Session(assertion, profile=self.config.name)
 
     def aws_auth_loop(self):

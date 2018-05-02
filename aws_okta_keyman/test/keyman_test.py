@@ -140,7 +140,7 @@ class KeymanTest(unittest.TestCase):
         self.assertEqual(keyman.handle_appid_selection(), None)
 
     @mock.patch('aws_okta_keyman.keyman.Config')
-    @mock.patch('aws_okta_keyman.keyman.okta')
+    @mock.patch('aws_okta_keyman.keyman.okta_saml')
     def test_init_okta(self, okta_mock, _config_mock):
         okta_mock.OktaSaml = mock.MagicMock()
         keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
@@ -151,7 +151,7 @@ class KeymanTest(unittest.TestCase):
         ])
 
     @mock.patch('aws_okta_keyman.keyman.Config')
-    @mock.patch('aws_okta_keyman.keyman.okta')
+    @mock.patch('aws_okta_keyman.keyman.okta_saml')
     def test_init_okta_with_oktapreview(self, okta_mock, _config_mock):
         okta_mock.OktaSaml = mock.MagicMock()
         keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
@@ -163,7 +163,7 @@ class KeymanTest(unittest.TestCase):
         ])
 
     @mock.patch('aws_okta_keyman.keyman.Config')
-    @mock.patch('aws_okta_keyman.keyman.okta')
+    @mock.patch('aws_okta_keyman.keyman.okta_saml')
     def test_init_okta_with_empty_input(self, okta_mock, _config_mock):
         okta_mock.EmptyInput = BaseException
         okta_mock.OktaSaml = mock.MagicMock()
@@ -198,12 +198,62 @@ class KeymanTest(unittest.TestCase):
                                                                     'c')
         keyman.okta_client.validate_mfa.return_value = True
         keyman.user_input = mock.MagicMock()
-        keyman.user_input.return_value = "000000"
+        keyman.user_input.return_value = '000000'
 
         keyman.auth_okta()
 
         keyman.okta_client.validate_mfa.assert_has_calls([
-            mock.call('a', 'b', "000000")
+            mock.call('a', 'b', '000000'),
+        ])
+
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_auth_okta_mfa_retry(self, _config_mock):
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
+        keyman.okta_client = mock.MagicMock()
+        keyman.okta_client.auth.side_effect = okta.PasscodeRequired('a', 'b',
+                                                                    'c')
+        keyman.okta_client.validate_mfa.side_effect = [False, True]
+        keyman.user_input = mock.MagicMock()
+        keyman.user_input.return_value = '000000'
+
+        keyman.auth_okta()
+
+        keyman.okta_client.validate_mfa.assert_has_calls([
+            mock.call('a', 'b', '000000'),
+            mock.call('a', 'b', '000000'),
+        ])
+
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_auth_okta_answer(self, _config_mock):
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
+        keyman.okta_client = mock.MagicMock()
+        factor = {'id': 'foo', 'profile': {'questionText': 'a'}}
+        keyman.okta_client.auth.side_effect = okta.AnswerRequired(factor, 'b')
+        keyman.okta_client.validate_answer.return_value = True
+        keyman.user_input = mock.MagicMock()
+        keyman.user_input.return_value = 'Someanswer'
+
+        keyman.auth_okta()
+
+        keyman.okta_client.validate_answer.assert_has_calls([
+            mock.call('foo', 'b', 'Someanswer'),
+        ])
+
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_auth_okta_answer_retry(self, _config_mock):
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
+        keyman.okta_client = mock.MagicMock()
+        factor = {'id': 'foo', 'profile': {'questionText': 'a'}}
+        keyman.okta_client.auth.side_effect = okta.AnswerRequired(factor, 'b')
+        keyman.okta_client.validate_answer.side_effect = [False, True]
+        keyman.user_input = mock.MagicMock()
+        keyman.user_input.return_value = 'Someanswer'
+
+        keyman.auth_okta()
+
+        keyman.okta_client.validate_answer.assert_has_calls([
+            mock.call('foo', 'b', 'Someanswer'),
+            mock.call('foo', 'b', 'Someanswer'),
         ])
 
     @mock.patch('aws_okta_keyman.keyman.Config')
@@ -253,6 +303,15 @@ class KeymanTest(unittest.TestCase):
         aws_mock.assert_has_calls([
             mock.call.Session('assertion', profile=mock.ANY)
         ])
+
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_start_session_failure(self, _config_mock):
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
+        keyman.okta_client = mock.MagicMock()
+        keyman.okta_client.get_assertion.side_effect = okta.UnknownError
+
+        with self.assertRaises(SystemExit):
+            keyman.start_session()
 
     @mock.patch('aws_okta_keyman.keyman.Config')
     def test_aws_auth_loop(self, config_mock):

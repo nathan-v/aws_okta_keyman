@@ -17,16 +17,14 @@
 # WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-"""This contains all of the Okta-specific code we need."""
+"""This contains the Okta client code."""
 from __future__ import unicode_literals
-import base64
 import logging
 import time
 from multiprocessing import Process
 import sys
 import webbrowser
 
-import bs4
 import requests
 
 from aws_okta_keyman.duo import Duo
@@ -63,6 +61,15 @@ class PasscodeRequired(BaseException):
         self.state_token = state_token
         self.provider = provider
         super(PasscodeRequired, self).__init__()
+
+
+class AnswerRequired(BaseException):
+    """A 2FA Passcode Must Be Entered."""
+
+    def __init__(self, factor, state_token):
+        self.factor = factor
+        self.state_token = state_token
+        super(AnswerRequired, self).__init__()
 
 
 class OktaVerifyRequired(BaseException):
@@ -160,24 +167,61 @@ class Okta(object):
         Returns:
             True/False whether or not authentication was successful
         """
-        if len(passcode) != 6:
-            LOG.error('Passcodes must be 6 digits')
+        if len(passcode) > 6 or len(passcode) < 5:
+            LOG.error('Passcodes must be 5 or 6 digits')
             return False
 
+        valid = self.send_user_response(fid, state_token, passcode, 'passCode')
+        if valid:
+            self.set_token(valid)
+            return True
+        else:
+            return False
+
+    def validate_answer(self, fid, state_token, answer):
+        """Validate an Okta user with Question-based MFA.
+
+        Takes in the supplied Factor ID (fid), State Token and user supplied
+        Passcode, and validates the auth. If successful, sets the session
+        token. If invalid, raises an exception.
+
+        Args:
+            fid: Okta Factor ID (returned in the PasscodeRequired exception)
+            state_token: State Tken (returned in the PasscodeRequired
+            exception)
+            answer: The user-supplied answer to verify
+
+        Returns:
+            True/False whether or not authentication was successful
+        """
+        if len(answer) == 0:
+            LOG.error('Answer cannot be blank')
+            return False
+
+        valid = self.send_user_response(fid, state_token, answer, 'answer')
+        if valid:
+            self.set_token(valid)
+            return True
+        else:
+            return False
+
+    def send_user_response(self, fid, state_token, user_response, resp_type):
+        """Call Okta with a factor response and verify it."""
         path = '/authn/factors/{fid}/verify'.format(fid=fid)
         data = {'fid': fid,
                 'stateToken': state_token,
-                'passCode': passcode}
+                resp_type: user_response}
         try:
-            ret = self._request(path, data)
+            return self._request(path, data)
         except requests.exceptions.HTTPError as err:
             if err.response.status_code == 403:
                 LOG.error('Invalid Passcode Detected')
                 return False
-            raise UnknownError(err.response.body)
+            if err.response.status_code == 401:
+                LOG.error('Invalid Passcode Retries Exceeded')
+                raise UnknownError('Retries exceeded')
 
-        self.set_token(ret)
-        return True
+            raise UnknownError(err.response.body)
 
     def okta_verify(self, fid, state_token):
         """Trigger an Okta Push Verification and waits.
@@ -309,61 +353,87 @@ class Okta(object):
         """In the case of an MFA response evaluate the response and handle
         accordingly based on available MFA factors.
         """
-        otp_possible = False
-        otp_provider = None
+        response_types = ['sms', 'question', 'call', 'token:software:totp']
+        push_factors = []
+        response_factors = []
         for factor in ret['_embedded']['factors']:
             if factor['factorType'] == 'push':
-                if self.okta_verify(factor['id'], ret['stateToken']):
+                LOG.debug('Okta Verify factor found')
+                push_factors.append(factor)
+            if factor['provider'] == 'DUO':
+                LOG.debug('Duo Auth factor found')
+                push_factors.append(factor)
+            if factor['factorType'] in response_types:
+                LOG.debug("{} factor found".format(factor['factorType']))
+                response_factors.append(factor)
+
+        if self.handle_push_factors(push_factors, ret['stateToken']):
+            return True
+
+        self.handle_response_factors(response_factors, ret['stateToken'])
+
+        # If we haven't returned or raised yet the factor requested isn't
+        # supported
+        LOG.debug("Factors from Okta: {}".format(
+            ret['_embedded']['factors']))
+        LOG.fatal('MFA type in use is unsupported')
+        raise UnknownError('MFA type in use is unsupported')
+
+    def handle_push_factors(self, factors, state_token):
+        """Handle  any push-type factors."""
+        for factor in factors:
+            if factor['factorType'] == 'push':
+                LOG.debug('Okta Verify factor found')
+                if self.okta_verify(factor['id'], state_token):
                     return True
             if factor['provider'] == 'DUO':
-                if self.duo_auth(factor['id'], ret['stateToken']):
+                LOG.debug('Duo Auth factor found')
+                if self.duo_auth(factor['id'], state_token):
                     return True
+        return False
+
+    def handle_response_factors(self, factors, state_token):
+        """Handle any OTP-type factors."""
+        otp_provider = None
+        otp_factor = None
+        for factor in factors:
+            if factor['factorType'] == 'sms':
+                self.request_otp(factor['id'], state_token, 'SMS')
+                phone = factor['profile']['phoneNumber']
+                otp_provider = "SMS ({})".format(phone)
+                otp_factor = factor['id']
+                break
+            if factor['factorType'] == 'call':
+                self.request_otp(factor['id'], state_token, 'phone call')
+                phone = factor['profile']['phoneNumber']
+                otp_provider = "call ({})".format(phone)
+                otp_factor = factor['id']
+                break
+            if factor['factorType'] == 'question':
+                raise AnswerRequired(factor, state_token)
             if factor['factorType'] == 'token:software:totp':
-                # Handle OTP separately in case we can do Okta or Duo but fail
-                # then we can fall back to OTP
-                LOG.debug('Software OTP option found')
                 otp_provider = factor['provider']
-                otp_possible = True
+                otp_factor = factor['id']
 
-        if otp_possible:
+        if otp_provider:
             raise PasscodeRequired(
-                fid=factor['id'],
-                state_token=ret['stateToken'],
+                fid=otp_factor,
+                state_token=state_token,
                 provider=otp_provider)
-        else:
-            # Log out the factors to make debugging MFA issues easier
-            LOG.debug("Factors from Okta: {}".format(
-                ret['_embedded']['factors']))
-            LOG.fatal('MFA type in use is unsupported')
-            raise UnknownError('MFA type in use is unsupported')
 
+    def request_otp(self, fid, state_token, otp_type):
+        """Trigger an OTP call, SMS, or other and return
 
-class OktaSaml(Okta):
-    """Handle the SAML part of talking to Okta."""
+        We trigger the push, and then immediately return as the next step is
+        essentially just an OTP code entry
 
-    def assertion(self, saml):
-        """Parse the assertion from the SAML response."""
-        assertion = ''
-        soup = bs4.BeautifulSoup(saml, 'html.parser')
-        for inputtag in soup.find_all('input'):
-            if inputtag.get('name') == 'SAMLResponse':
-                assertion = inputtag.get('value')
-        return base64.b64decode(assertion)
-
-    def get_assertion(self, appid, apptype):
-        """Call Okta and get the assertion."""
-        path = '{url}/home/{apptype}/{appid}'.format(
-            url=self.base_url, apptype=apptype, appid=appid)
-        resp = self.session.get(path,
-                                params={'onetimetoken': self.session_token})
-        LOG.debug(resp.__dict__)
-
-        try:
-            resp.raise_for_status()
-        except (requests.exceptions.HTTPError,
-                requests.exceptions.ConnectionError) as err:
-            LOG.error('Unknown error: {msg}'.format(
-                msg=str(err.response.__dict__)))
-            raise UnknownError()
-
-        return self.assertion(resp.text)
+        Args:
+            fid: Okta Factor ID used to trigger the push
+            state_token: State Token allowing us to trigger the push
+            otp_type: String shown in log for OTP type
+        """
+        LOG.warning("Okta {} being requested...".format(otp_type))
+        path = '/authn/factors/{fid}/verify'.format(fid=fid)
+        data = {'fid': fid,
+                'stateToken': state_token}
+        self._request(path, data)
