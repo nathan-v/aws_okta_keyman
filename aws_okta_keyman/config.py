@@ -43,6 +43,7 @@ class Config:
         self.appid = None
         self.name = 'default'
         self.oktapreview = None
+        self.region = None
 
     def set_appid_from_account_id(self, account_id):
         """Take an account ID (list index) and sets the appid based on that."""
@@ -196,6 +197,12 @@ class Config:
                                        'production Okta organization.'
                                    ),
                                    default=False)
+        optional_args.add_argument('-R', '--region', type=str,
+                                   help=(
+                                       'Specify a region for the stored '
+                                       'AWS credentials'
+                                   ),
+                                   default='us-east-1')
 
     @staticmethod
     def read_yaml(filename, raise_on_error=False):

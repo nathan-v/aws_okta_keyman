@@ -193,6 +193,7 @@ class ConfigTest(unittest.TestCase):
             '-n', 'profilename',
             '-c', 'config_file_path',
             '-w', 'write_file_path',
+            '-R', 'us-west-2',
             '-D', '-r', '-p'
         ]
         config = Config(argv)
@@ -204,6 +205,7 @@ class ConfigTest(unittest.TestCase):
         self.assertEquals(config.name, 'profilename')
         self.assertEquals(config.config, 'config_file_path')
         self.assertEquals(config.writepath, 'write_file_path')
+        self.assertEquals(config.region, 'us-west-2')
         self.assertEquals(config.debug, True)
         self.assertEquals(config.reup, True)
         self.assertEquals(config.oktapreview, True)
@@ -217,6 +219,7 @@ class ConfigTest(unittest.TestCase):
             '--name', 'profilename',
             '--config', 'config_file_path',
             '--writepath', 'write_file_path',
+            '--region', 'us-west-2',
             '--debug', '--reup'
         ]
         config = Config(argv)
@@ -228,6 +231,7 @@ class ConfigTest(unittest.TestCase):
         self.assertEquals(config.name, 'profilename')
         self.assertEquals(config.config, 'config_file_path')
         self.assertEquals(config.writepath, 'write_file_path')
+        self.assertEquals(config.region, 'us-west-2')
         self.assertEquals(config.debug, True)
         self.assertEquals(config.reup, True)
 

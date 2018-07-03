@@ -301,7 +301,7 @@ class KeymanTest(unittest.TestCase):
             mock.call.get_assertion(appid=mock.ANY, apptype='amazon_aws')
         ])
         aws_mock.assert_has_calls([
-            mock.call.Session('assertion', profile=mock.ANY)
+            mock.call.Session('assertion', profile=mock.ANY, region=mock.ANY)
         ])
 
     @mock.patch('aws_okta_keyman.keyman.Config')
