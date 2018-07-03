@@ -191,7 +191,9 @@ class Keyman:
         except okta.UnknownError:
             sys.exit(1)
 
-        return aws.Session(assertion, profile=self.config.name, region=self.config.region)
+        return aws.Session(assertion,
+                           profile=self.config.name,
+                           region=self.config.region)
 
     def aws_auth_loop(self):
         """Once we're authenticated with an OktaSaml client object we use that
