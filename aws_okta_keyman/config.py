@@ -44,6 +44,7 @@ class Config:
         self.name = 'default'
         self.oktapreview = None
         self.region = None
+        self.provider = None
 
     def set_appid_from_account_id(self, account_id):
         """Take an account ID (list index) and sets the appid based on that."""
@@ -203,6 +204,11 @@ class Config:
                                        'AWS credentials'
                                    ),
                                    default='us-east-1')
+        optional_args.add_argument('-P', '--provider', type=str,
+                                   help=(
+                                        'Use a preferred MFA provider '
+                                        'when multiple providers are present'
+                                   ))
 
     @staticmethod
     def read_yaml(filename, raise_on_error=False):

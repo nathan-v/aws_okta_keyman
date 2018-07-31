@@ -122,16 +122,11 @@ class Keyman:
         input value
         """
         try:
-            if self.config.oktapreview is True:
-                self.okta_client = okta_saml.OktaSaml(self.config.org,
-                                                      self.config.username,
-                                                      password,
-                                                      oktapreview=True)
-            else:
-                self.okta_client = okta_saml.OktaSaml(self.config.org,
-                                                      self.config.username,
-                                                      password)
-
+            self.okta_client = okta_saml.OktaSaml(self.config.org,
+                                                  self.config.username,
+                                                  password,
+                                                  self.config.oktapreview,
+                                                  self.config.provider)
         except okta.EmptyInput:
             self.log.fatal('Cannot enter a blank string for any input')
             sys.exit(1)

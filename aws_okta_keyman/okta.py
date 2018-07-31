@@ -87,7 +87,7 @@ class Okta(object):
     See OktaSaml for a more useful object.
     """
 
-    def __init__(self, organization, username, password, oktapreview=False):
+    def __init__(self, organization, username, password, oktapreview=False, provider=None):
         if oktapreview:
             self.base_url = PREVIEW_BASE_URL.format(organization=organization)
         else:
@@ -104,6 +104,7 @@ class Okta(object):
         self.password = password
         self.session = requests.Session()
         self.session_token = None
+        self.provider = provider.upper()
 
     def _request(self, path, data=None):
         """Make Okta API calls.
@@ -349,14 +350,23 @@ class Okta(object):
 
         raise UnknownError(status)
 
+    def filter_factors(self, factors):
+        """Filter the list of factors by the preferred provider.
+        """
+        filtered = filter(lambda f: f['provider'] == self.provider, factors)
+        return list(filtered) if self.provider else factors
+
     def handle_mfa_response(self, ret):
         """In the case of an MFA response evaluate the response and handle
         accordingly based on available MFA factors.
         """
+        factors = filter_factors(ret['_embedded']['factors'])
+
         response_types = ['sms', 'question', 'call', 'token:software:totp']
         push_factors = []
         response_factors = []
-        for factor in ret['_embedded']['factors']:
+
+        for factor in factors:
             if factor['factorType'] == 'push':
                 LOG.debug('Okta Verify factor found')
                 push_factors.append(factor)
@@ -380,7 +390,7 @@ class Okta(object):
         raise UnknownError('MFA type in use is unsupported')
 
     def handle_push_factors(self, factors, state_token):
-        """Handle  any push-type factors."""
+        """Handle any push-type factors."""
         for factor in factors:
             if factor['factorType'] == 'push':
                 LOG.debug('Okta Verify factor found')
@@ -396,6 +406,7 @@ class Okta(object):
         """Handle any OTP-type factors."""
         otp_provider = None
         otp_factor = None
+
         for factor in factors:
             if factor['factorType'] == 'sms':
                 self.request_otp(factor['id'], state_token, 'SMS')
