@@ -360,7 +360,7 @@ class Okta(object):
         """In the case of an MFA response evaluate the response and handle
         accordingly based on available MFA factors.
         """
-        factors = filter_factors(ret['_embedded']['factors'])
+        factors = self.filter_factors(ret['_embedded']['factors'])
 
         response_types = ['sms', 'question', 'call', 'token:software:totp']
         push_factors = []
