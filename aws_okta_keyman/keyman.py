@@ -54,7 +54,9 @@ class Keyman:
             self.handle_appid_selection()
 
             # get user password
-            password = self.user_password()
+            password = self.config.password
+            if self.config.password == "":
+                password = self.user_password()
 
             # Generate our initial OktaSaml client
             self.init_okta(password)
@@ -110,8 +112,13 @@ class Keyman:
             msg = 'No app ID provided; select from available AWS accounts'
             self.log.warning(msg)
             accts = self.config.accounts
-            acct_selection = self.selector_menu(accts, 'name', 'Account')
-            self.config.set_appid_from_account_id(acct_selection)
+            if self.config.appname:
+                acct_selection = self.config.set_appid_from_account_name(
+                    self.config.appname)
+                print(acct_selection)
+            else:
+                acct_selection = self.selector_menu(accts, 'name', 'Account')
+                self.config.set_appid_from_account_id(acct_selection)
             msg = "Using account: {} / {}".format(
                 accts[acct_selection]["name"], accts[acct_selection]["appid"]
             )
@@ -153,7 +160,9 @@ class Keyman:
             )
             verified = False
             while not verified:
-                passcode = self.user_input('MFA Passcode: ')
+                passcode = self.config.passcode
+                if self.config.passcode == "":
+                    passcode = self.user_input('MFA Passcode: ')
                 verified = self.okta_client.validate_mfa(err.fid,
                                                          err.state_token,
                                                          passcode)
@@ -178,7 +187,11 @@ class Keyman:
         """
         self.log.warning('Multiple AWS roles found; please select one')
         roles = session.available_roles()
-        role_selection = self.selector_menu(roles, 'role', 'Role')
+        role_selection = None
+        if self.config.role:
+            role_selection = self.config.get_role_index(roles)
+        else:
+            role_selection = self.selector_menu(roles, 'role', 'Role')
         session.set_role(role_selection)
         session.assume_role()
         return role_selection

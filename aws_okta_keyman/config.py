@@ -20,6 +20,7 @@ import argparse
 import getpass
 import logging
 import os
+import re
 
 import yaml
 
@@ -43,10 +44,32 @@ class Config:
         self.appid = None
         self.name = 'default'
         self.oktapreview = None
+        self.role = None
 
     def set_appid_from_account_id(self, account_id):
         """Take an account ID (list index) and sets the appid based on that."""
+        self.set_default_role(account_id)
         self.appid = self.accounts[account_id]['appid']
+
+    def set_appid_from_account_name(self, account_name):
+        """Take an account name and sets the appid based on that"""
+        selected_account = list(
+            filter(lambda account: account['name'] == account_name, self.accounts))
+        account_id = self.accounts.index(selected_account[0])
+        self.set_default_role(account_id)
+        self.appid = selected_account[0]['appid']
+        return account_id
+
+    def get_role_index(self, roles):
+        role = re.compile(".+/" + self.role)
+        for role_index in range(len(roles)):
+            if role.match(roles[role_index]['role']):
+                return role_index
+        return None
+
+    def set_default_role(self, account_id):
+        if 'role' in self.accounts[account_id] and self.role is None:
+            self.role = self.accounts[account_id]['role']
 
     def validate(self):
         """Ensure we have all the settings we need before continuing."""
@@ -196,6 +219,17 @@ class Config:
                                        'production Okta organization.'
                                    ),
                                    default=False)
+        optional_args.add_argument('-s', '--password', type=str,
+                                   help='Provide your okta password',
+                                   default="")
+        optional_args.add_argument('-d', '--passcode', type=str,
+                                   help='Provide passcode',
+                                   default="")
+        optional_args.add_argument('-m', '--appname', type=str,
+                                   help='Application name',
+                                   default="")
+        optional_args.add_argument('-l', '--role', type=str,
+                                   help='Role to be assumed')
 
     @staticmethod
     def read_yaml(filename, raise_on_error=False):
