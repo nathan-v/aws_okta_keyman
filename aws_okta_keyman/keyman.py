@@ -121,12 +121,14 @@ class Keyman:
         """Initialize the Okta client or exit if the client received an empty
         input value
         """
+        oktapreview = self.config.oktapreview
+        provider = self.config.provider
         try:
             self.okta_client = okta_saml.OktaSaml(self.config.org,
                                                   self.config.username,
                                                   password,
-                                                  self.config.oktapreview,
-                                                  self.config.provider)
+                                                  oktapreview=oktapreview,
+                                                  provider=provider)
         except okta.EmptyInput:
             self.log.fatal('Cannot enter a blank string for any input')
             sys.exit(1)
@@ -187,8 +189,7 @@ class Keyman:
             sys.exit(1)
 
         return aws.Session(assertion,
-                           profile=self.config.name,
-                           region=self.config.region)
+                           profile=self.config.name)
 
     def aws_auth_loop(self):
         """Once we're authenticated with an OktaSaml client object we use that

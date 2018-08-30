@@ -91,6 +91,24 @@ MFA_CHALLENGE_GOOGLE_OTP = {
     },
     'stateToken': 'token',
 }
+MFA_CHALLENGE_MULTI_OTP = {
+    'status': 'MFA_REQUIRED',
+    '_embedded': {
+        'factors': [
+            {
+                'factorType': 'token:software:totp',
+                'provider': 'GOOGLE',
+                'id': 'abcd',
+            },
+            {
+                'factorType': 'token:software:totp',
+                'provider': 'OKTA',
+                'id': 'abcd',
+            }
+        ]
+    },
+    'stateToken': 'token',
+}
 MFA_CHALLENGE_SMS_OTP = {
     'status': 'MFA_REQUIRED',
     '_embedded': {
@@ -545,6 +563,28 @@ class OktaTest(unittest.TestCase):
         ret = client.handle_push_factors([], 'token')
 
         self.assertEqual(ret, False)
+
+    def test_handle_mfa_response_trigger_google(self):
+        client = okta.Okta('organization',
+                           'username',
+                           'password',
+                           oktapreview=False,
+                           provider='google')
+
+        client.handle_response_factors = mock.MagicMock(
+            name='handle_response_factors')
+
+        passcode = okta.PasscodeRequired('', '', '')
+        client.handle_response_factors.side_effect = passcode
+
+        with self.assertRaises(okta.PasscodeRequired):
+            client.handle_mfa_response(MFA_CHALLENGE_MULTI_OTP)
+
+        client.handle_response_factors.assert_has_calls([
+            mock.call([{'factorType': 'token:software:totp',
+                        'provider': 'GOOGLE',
+                        'id': 'abcd'}], 'token')
+        ])
 
     def test_handle_push_factors_okta_verify(self):
         client = okta.Okta('organization', 'username', 'password')

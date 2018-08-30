@@ -43,7 +43,6 @@ class Config:
         self.appid = None
         self.name = 'default'
         self.oktapreview = None
-        self.region = None
         self.provider = None
 
     def set_appid_from_account_id(self, account_id):
@@ -198,12 +197,6 @@ class Config:
                                        'production Okta organization.'
                                    ),
                                    default=False)
-        optional_args.add_argument('-R', '--region', type=str,
-                                   help=(
-                                       'Specify a region for the stored '
-                                       'AWS credentials'
-                                   ),
-                                   default='us-east-1')
         optional_args.add_argument('-P', '--provider', type=str,
                                    help=(
                                         'Use a preferred MFA provider '

@@ -104,7 +104,7 @@ class Okta(object):
         self.password = password
         self.session = requests.Session()
         self.session_token = None
-        self.provider = provider.upper()
+        self.provider = provider
 
     def _request(self, path, data=None):
         """Make Okta API calls.
@@ -351,10 +351,14 @@ class Okta(object):
         raise UnknownError(status)
 
     def filter_factors(self, factors):
-        """Filter the list of factors by the preferred provider.
+        """Filter the list of factors by the preferred provider type if set
         """
-        filtered = filter(lambda f: f['provider'] == self.provider, factors)
-        return list(filtered) if self.provider else factors
+        if self.provider is None:
+            return factors
+
+        provider_up = self.provider.upper()
+        filtered = filter(lambda f: f['provider'] == provider_up, factors)
+        return list(filtered)
 
     def handle_mfa_response(self, ret):
         """In the case of an MFA response evaluate the response and handle

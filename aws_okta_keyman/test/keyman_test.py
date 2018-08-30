@@ -147,7 +147,11 @@ class KeymanTest(unittest.TestCase):
         keyman.init_okta('troz')
 
         okta_mock.OktaSaml.assert_has_calls([
-            mock.call(mock.ANY, mock.ANY, 'troz')
+            mock.call(mock.ANY,
+                      mock.ANY,
+                      'troz',
+                      oktapreview=mock.ANY,
+                      provider=mock.ANY)
         ])
 
     @mock.patch('aws_okta_keyman.keyman.Config')
@@ -159,7 +163,11 @@ class KeymanTest(unittest.TestCase):
         keyman.init_okta('troz')
 
         okta_mock.OktaSaml.assert_has_calls([
-            mock.call(mock.ANY, mock.ANY, 'troz', oktapreview=True)
+            mock.call(mock.ANY,
+                      mock.ANY,
+                      'troz',
+                      oktapreview=True,
+                      provider=mock.ANY)
         ])
 
     @mock.patch('aws_okta_keyman.keyman.Config')
@@ -301,7 +309,7 @@ class KeymanTest(unittest.TestCase):
             mock.call.get_assertion(appid=mock.ANY, apptype='amazon_aws')
         ])
         aws_mock.assert_has_calls([
-            mock.call.Session('assertion', profile=mock.ANY, region=mock.ANY)
+            mock.call.Session('assertion', profile=mock.ANY)
         ])
 
     @mock.patch('aws_okta_keyman.keyman.Config')
