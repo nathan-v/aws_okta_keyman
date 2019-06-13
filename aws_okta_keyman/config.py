@@ -203,7 +203,7 @@ class Config:
         config = {}
         try:
             if os.path.isfile(filename):
-                config = yaml.load(open(filename, 'r'))
+                config = yaml.load(open(filename, 'r'), Loader=yaml.FullLoader)
                 LOG.debug("YAML loaded config: {}".format(config))
             else:
                 if raise_on_error:
