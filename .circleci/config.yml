@@ -3,6 +3,7 @@ workflows:
   version: 2
   test:
     jobs:
+      - test-3.7
       - test-3.6
       - test-3.5
       - test-2.7
@@ -24,7 +25,7 @@ jobs:
           command: |
             . venv/bin/activate
             coverage run --source=aws_okta_keyman setup.py test
-            coveralls
+            codecov
       - run:
           name: pycodestyle
           command: |
@@ -43,6 +44,11 @@ jobs:
     <<: *test-template
     docker:
       - image: circleci/python:3.6
+  test-3.7:
+    <<: *test-template
+    docker:
+      - image: circleci/python:3.7
+
 notify:
   webhooks:
     - url: https://coveralls.io/webhook?repo_token=2r3GsmExITkdgJBGEnGquBymNzhex0UWQ

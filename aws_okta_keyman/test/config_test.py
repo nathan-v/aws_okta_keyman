@@ -240,7 +240,7 @@ class ConfigTest(unittest.TestCase):
 
         m = mock.mock_open(read_data=yml)
         with mock.patch('aws_okta_keyman.config.open', m):
-                ret = Config.read_yaml('./.config/aws_okta_keyman.yml')
+            ret = Config.read_yaml('./.config/aws_okta_keyman.yml')
 
         expected = {
             'username': 'user@example.com', 'org': 'example', 'appid': 'app/id'
@@ -367,7 +367,7 @@ class ConfigTest(unittest.TestCase):
 
         m = mock.mock_open()
         with mock.patch('aws_okta_keyman.config.open', m):
-                config.write_config()
+            config.write_config()
 
         m.assert_has_calls([
             mock.call(u'./.config/aws_okta_keyman.yml', 'w'),
@@ -427,7 +427,7 @@ class ConfigTest(unittest.TestCase):
 
         m = mock.mock_open()
         with mock.patch('aws_okta_keyman.config.open', m):
-                config.write_config()
+            config.write_config()
 
         m.assert_has_calls([
             mock.call().write('org'),
@@ -465,7 +465,7 @@ class ConfigTest(unittest.TestCase):
 
         m = mock.mock_open()
         with mock.patch('aws_okta_keyman.config.open', m):
-                config.write_config()
+            config.write_config()
 
         m.assert_has_calls([mock.call(expected_path, 'w')])
 
