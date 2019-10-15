@@ -114,6 +114,23 @@ class KeymanTest(unittest.TestCase):
         ])
 
     @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_selector_menu_keep_asking_if_invalid(self, _config_mock):
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
+        stdout_mock = mock.Mock()
+        sys.stdout = stdout_mock
+        keyman.user_input = mock.MagicMock()
+        keyman.user_input.side_effect = ['invalid', '', 0]
+        stuff = [{'artist': 'Metallica'},
+                 {'artist': 'Soundgarden'}]
+        ret = keyman.selector_menu(stuff, 'artist', 'Artist')
+        self.assertEqual(ret, 0)
+        keyman.user_input.assert_has_calls([
+            mock.call('Artist selection: '),
+            mock.call('Artist selection: '),
+            mock.call('Artist selection: ')
+        ])
+
+    @mock.patch('aws_okta_keyman.keyman.Config')
     def test_handle_appid_selection(self, _config_mock):
         keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar'])
         keyman.config.accounts = [{'name': 'myAccount', 'appid': 'myID'}]
