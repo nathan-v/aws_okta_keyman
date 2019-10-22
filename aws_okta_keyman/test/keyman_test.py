@@ -4,7 +4,7 @@ import logging
 import sys
 import unittest
 
-from aws_okta_keyman import aws, okta
+from aws_okta_keyman import aws, okta, duo
 from aws_okta_keyman.keyman import Keyman
 
 if sys.version_info[0] < 3:  # Python 2
@@ -20,7 +20,7 @@ class KeymanTest(unittest.TestCase):
         # returns a root logger. No mocks used here, want to ensure that the
         # options passed to the logger are valid.
         ret = Keyman.setup_logging()
-        self.assertEquals(type(ret), type(logging.getLogger()))
+        self.assertEqual(type(ret), type(logging.getLogger()))
 
     @mock.patch('aws_okta_keyman.keyman.Config')
     def test_init_blank_args(self, _config_mock):
@@ -134,6 +134,26 @@ class KeymanTest(unittest.TestCase):
         ])
 
     @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_handle_duo_factor_selection(self, _config_mock):
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar'])
+        keyman.config.accounts = [{'name': 'myAccount', 'appid': 'myID'}]
+        keyman.config.appid = None
+        keyman.selector_menu = mock.MagicMock(name='selector_menu')
+        keyman.selector_menu.return_value = 0
+        keyman.config.set_appid_from_account_id = mock.MagicMock()
+
+        ret = keyman.handle_duo_factor_selection()
+
+        keyman.selector_menu.assert_has_calls([
+            mock.call(
+                [{'name': 'Duo Push', 'factor': 'push'},
+                 {'name': 'OTP Passcode', 'factor': 'passcode'},
+                 {'name': 'Phone call', 'factor': 'call'}],
+                'name', 'Factor')
+        ])
+        self.assertEqual(ret, 'push')
+
+    @mock.patch('aws_okta_keyman.keyman.Config')
     def test_handle_appid_selection_when_appid_provided(self, config_mock):
         keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
         config_mock().appid = 'someid'
@@ -147,7 +167,7 @@ class KeymanTest(unittest.TestCase):
         keyman.init_okta('troz')
 
         okta_mock.OktaSaml.assert_has_calls([
-            mock.call(mock.ANY, mock.ANY, 'troz')
+            mock.call(mock.ANY, mock.ANY, 'troz', duo_factor=mock.ANY)
         ])
 
     @mock.patch('aws_okta_keyman.keyman.Config')
@@ -159,7 +179,7 @@ class KeymanTest(unittest.TestCase):
         keyman.init_okta('troz')
 
         okta_mock.OktaSaml.assert_has_calls([
-            mock.call(mock.ANY, mock.ANY, 'troz', oktapreview=True)
+            mock.call(mock.ANY, mock.ANY, 'troz', mock.ANY, oktapreview=True)
         ])
 
     @mock.patch('aws_okta_keyman.keyman.Config')
@@ -171,6 +191,18 @@ class KeymanTest(unittest.TestCase):
         keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
         with self.assertRaises(SystemExit):
             keyman.init_okta('troz')
+
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    @mock.patch('aws_okta_keyman.keyman.okta_saml')
+    def test_init_okta_with_duo_factor(self, okta_mock, _config_mock):
+        okta_mock.OktaSaml = mock.MagicMock()
+        keyman = Keyman(
+            ['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz', '-d', 'push'])
+        keyman.init_okta('troz')
+
+        okta_mock.OktaSaml.assert_has_calls([
+            mock.call(mock.ANY, mock.ANY, 'troz', duo_factor=mock.ANY)
+        ])
 
     @mock.patch('aws_okta_keyman.keyman.Config')
     def test_auth_okta(self, _config_mock):
@@ -254,6 +286,50 @@ class KeymanTest(unittest.TestCase):
         keyman.okta_client.validate_answer.assert_has_calls([
             mock.call('foo', 'b', 'Someanswer'),
             mock.call('foo', 'b', 'Someanswer'),
+        ])
+
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_auth_okta_duo_mfa_no_factor(self, _config_mock):
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
+        keyman.okta_client = mock.MagicMock()
+        keyman.handle_duo_factor_selection = mock.MagicMock()
+        keyman.okta_client.auth.side_effect = [duo.FactorRequired('a', 'b'),
+                                               True]
+        keyman.okta_client.duo_auth.side_effect = [False, True]
+        keyman.user_input = mock.MagicMock()
+
+        keyman.auth_okta()
+        keyman.handle_duo_factor_selection.assert_has_calls([mock.call()])
+
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_auth_okta_duo_mfa_passcode(self, _config_mock):
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
+        keyman.okta_client = mock.MagicMock()
+        keyman.okta_client.auth.side_effect = duo.PasscodeRequired('a', 'b')
+        keyman.okta_client.duo_auth.return_value = True
+        keyman.user_input = mock.MagicMock()
+        keyman.user_input.return_value = '000000'
+
+        keyman.auth_okta()
+
+        keyman.okta_client.duo_auth.assert_has_calls([
+            mock.call('a', 'b', '000000'),
+        ])
+
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_auth_okta_duo_mfa_passcode_retry(self, _config_mock):
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
+        keyman.okta_client = mock.MagicMock()
+        keyman.okta_client.auth.side_effect = duo.PasscodeRequired('a', 'b')
+        keyman.okta_client.duo_auth.side_effect = [False, True]
+        keyman.user_input = mock.MagicMock()
+        keyman.user_input.return_value = '000000'
+
+        keyman.auth_okta()
+
+        keyman.okta_client.duo_auth.assert_has_calls([
+            mock.call('a', 'b', '000000'),
+            mock.call('a', 'b', '000000'),
         ])
 
     @mock.patch('aws_okta_keyman.keyman.Config')

@@ -79,7 +79,7 @@ class TestCredentials(unittest.TestCase):
         ])
 
 
-class TestSesssion(unittest.TestCase):
+class TestSession(unittest.TestCase):
 
     @mock.patch('aws_okta_keyman.aws_saml.SamlAssertion')
     def setUp(self, mock_saml):
@@ -100,7 +100,7 @@ class TestSesssion(unittest.TestCase):
             dt_mock.strptime.return_value = expir_mock
             ret = session.is_valid
 
-        self.assertEquals(False, ret)
+        self.assertEqual(False, ret)
 
     def test_is_valid_false_missing_expiration(self):
         session = aws.Session('BogusAssertion')
@@ -112,7 +112,7 @@ class TestSesssion(unittest.TestCase):
         # expiration hasn't been set yet.
         ret = session.is_valid
 
-        self.assertEquals(False, ret)
+        self.assertEqual(False, ret)
 
     def test_is_valid_true(self):
         session = aws.Session('BogusAssertion')
@@ -128,14 +128,14 @@ class TestSesssion(unittest.TestCase):
             dt_mock.strptime.return_value = expir_mock
             ret = session.is_valid
 
-        self.assertEquals(True, ret)
+        self.assertEqual(True, ret)
 
     @mock.patch('aws_okta_keyman.aws.Credentials.add_profile')
     def test_write(self, mock_add_profile):
         session = aws.Session('BogusAssertion')
         ret = session._write()
 
-        self.assertEquals(None, ret)
+        self.assertEqual(None, ret)
 
         # Verify add_profile is called with the correct args
         creds = {'AccessKeyId': None, 'SecretAccessKey': None,
@@ -161,11 +161,11 @@ class TestSesssion(unittest.TestCase):
         session.sts.assume_role_with_saml.return_value = sts
         ret = session.assume_role()
 
-        self.assertEquals(None, ret)
-        self.assertEquals('AKI', session.creds['AccessKeyId'])
-        self.assertEquals('squirrel', session.creds['SecretAccessKey'])
-        self.assertEquals('token', session.creds['SessionToken'])
-        self.assertEquals('never', session.creds['Expiration'])
+        self.assertEqual(None, ret)
+        self.assertEqual('AKI', session.creds['AccessKeyId'])
+        self.assertEqual('squirrel', session.creds['SecretAccessKey'])
+        self.assertEqual('token', session.creds['SessionToken'])
+        self.assertEqual('never', session.creds['Expiration'])
 
         # Verify _write is called correctly
         mock_write.assert_has_calls([
@@ -204,7 +204,7 @@ class TestSesssion(unittest.TestCase):
         session = aws.Session('BogusAssertion')
         session.assertion = assertion
         session.set_role('0')
-        self.assertEquals('', session.role['role'])
+        self.assertEqual('', session.role['role'])
 
     def test_available_roles(self):
         assertion = mock.Mock()
@@ -214,4 +214,4 @@ class TestSesssion(unittest.TestCase):
         session = aws.Session('BogusAssertion')
         session.assertion = assertion
         result = session.available_roles()
-        self.assertEquals(roles, result)
+        self.assertEqual(roles, result)
