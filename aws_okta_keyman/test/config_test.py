@@ -24,21 +24,21 @@ class ConfigTest(unittest.TestCase):
         config = Config(['aws_okta_keyman.py'])
         config.accounts = [{'appid': 'A123'}]
         config.set_appid_from_account_id(0)
-        self.assertEquals(config.appid, 'A123')
+        self.assertEqual(config.appid, 'A123')
 
     def test_validate_good_with_accounts(self):
         config = Config(['aws_okta_keyman.py'])
         config.accounts = [{'appid': 'A123'}]
         config.org = 'example'
         config.username = 'user@example.com'
-        self.assertEquals(config.validate(), None)
+        self.assertEqual(config.validate(), None)
 
     def test_validate_good_with_appid(self):
         config = Config(['aws_okta_keyman.py'])
         config.appid = 'A123'
         config.org = 'example'
         config.username = 'user@example.com'
-        self.assertEquals(config.validate(), None)
+        self.assertEqual(config.validate(), None)
 
     def test_validate_missing_username(self):
         config = Config(['aws_okta_keyman.py'])
@@ -142,7 +142,7 @@ class ConfigTest(unittest.TestCase):
         config.get_config()
         config.write = './.config/aws_okta_keyman.yml'
 
-        self.assertEquals(config.write, './.config/aws_okta_keyman.yml')
+        self.assertEqual(config.write, './.config/aws_okta_keyman.yml')
         write_mock.assert_has_calls([
             mock.call(),
         ])
@@ -156,7 +156,7 @@ class ConfigTest(unittest.TestCase):
         config.parse_args(main_required=False)
 
         # Should succeed without throwing due to missing args
-        self.assertEquals(config.debug, True)
+        self.assertEqual(config.debug, True)
 
     def test_parse_args_req_main_missing(self):
         argv = [
@@ -180,9 +180,9 @@ class ConfigTest(unittest.TestCase):
         config.parse_args(main_required=True)
 
         # Should succeed without throwing due to missing args
-        self.assertEquals(config.appid, 'app/id')
-        self.assertEquals(config.org, 'foobar')
-        self.assertEquals(config.username, 'test')
+        self.assertEqual(config.appid, 'app/id')
+        self.assertEqual(config.org, 'foobar')
+        self.assertEqual(config.username, 'test')
 
     def test_parse_args_verify_all_parsed_short(self):
         argv = [
@@ -193,20 +193,22 @@ class ConfigTest(unittest.TestCase):
             '-n', 'profilename',
             '-c', 'config_file_path',
             '-w', 'write_file_path',
+            '-d', 'push',
             '-D', '-r', '-p'
         ]
         config = Config(argv)
         config.parse_args(main_required=True)
 
-        self.assertEquals(config.appid, 'app/id')
-        self.assertEquals(config.org, 'foobar')
-        self.assertEquals(config.username, 'test')
-        self.assertEquals(config.name, 'profilename')
-        self.assertEquals(config.config, 'config_file_path')
-        self.assertEquals(config.writepath, 'write_file_path')
-        self.assertEquals(config.debug, True)
-        self.assertEquals(config.reup, True)
-        self.assertEquals(config.oktapreview, True)
+        self.assertEqual(config.appid, 'app/id')
+        self.assertEqual(config.org, 'foobar')
+        self.assertEqual(config.username, 'test')
+        self.assertEqual(config.name, 'profilename')
+        self.assertEqual(config.config, 'config_file_path')
+        self.assertEqual(config.writepath, 'write_file_path')
+        self.assertEqual(config.duo_factor, 'push')
+        self.assertEqual(config.debug, True)
+        self.assertEqual(config.reup, True)
+        self.assertEqual(config.oktapreview, True)
 
     def test_parse_args_verify_all_parsed_full(self):
         argv = [
@@ -217,19 +219,21 @@ class ConfigTest(unittest.TestCase):
             '--name', 'profilename',
             '--config', 'config_file_path',
             '--writepath', 'write_file_path',
+            '--duo_factor', 'push',
             '--debug', '--reup'
         ]
         config = Config(argv)
         config.parse_args(main_required=True)
 
-        self.assertEquals(config.appid, 'app/id')
-        self.assertEquals(config.org, 'foobar')
-        self.assertEquals(config.username, 'test')
-        self.assertEquals(config.name, 'profilename')
-        self.assertEquals(config.config, 'config_file_path')
-        self.assertEquals(config.writepath, 'write_file_path')
-        self.assertEquals(config.debug, True)
-        self.assertEquals(config.reup, True)
+        self.assertEqual(config.appid, 'app/id')
+        self.assertEqual(config.org, 'foobar')
+        self.assertEqual(config.username, 'test')
+        self.assertEqual(config.name, 'profilename')
+        self.assertEqual(config.config, 'config_file_path')
+        self.assertEqual(config.writepath, 'write_file_path')
+        self.assertEqual(config.duo_factor, 'push')
+        self.assertEqual(config.debug, True)
+        self.assertEqual(config.reup, True)
 
     @mock.patch('aws_okta_keyman.config.os.path.isfile')
     def test_read_yaml(self, isfile_mock):
@@ -323,9 +327,9 @@ class ConfigTest(unittest.TestCase):
 
         config.parse_config('./.config/aws_okta_keyman.yml')
 
-        self.assertEquals(config.appid, 'app/id')
-        self.assertEquals(config.org, 'example')
-        self.assertEquals(config.username, 'user@example.com')
+        self.assertEqual(config.appid, 'app/id')
+        self.assertEqual(config.org, 'example')
+        self.assertEqual(config.username, 'user@example.com')
 
     def test_parse_config_args_preferred(self):
         config = Config(['aws_okta_keyman.py'])
@@ -342,9 +346,9 @@ class ConfigTest(unittest.TestCase):
         config.parse_config('./.config/aws_okta_keyman.yml')
 
         # Make sure we're getting the args not the config values
-        self.assertEquals(config.appid, 'mysupercoolapp/id')
-        self.assertEquals(config.org, 'foobar')
-        self.assertEquals(config.username, 'test')
+        self.assertEqual(config.appid, 'mysupercoolapp/id')
+        self.assertEqual(config.org, 'foobar')
+        self.assertEqual(config.username, 'test')
 
     def test_write_config(self):
         config = Config(['aws_okta_keyman.py'])

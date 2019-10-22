@@ -146,16 +146,6 @@ class Session(object):
     def is_valid(self):
         """Return True if the Session is still valid.
 
-        Takes the current time (in UTC) and compares it to the Expiration time
-        returned by Amazon. Adds a 10 minute buffer to make sure that we start
-        working to renew the creds far before they really expire and break.
-
-        Args:
-            now: A datetime.datetime() object (likely
-            datetime.datetime.utcnow())
-            buffer: Number of seconds before the actual expiration before we
-            start returning false.
-
         Returns:
             Bool
         """
@@ -179,7 +169,7 @@ class Session(object):
         self.role = self.assertion.roles()[int(role_index)]
 
     def available_roles(self):
-        """Return the roles availble from AWS."""
+        """Return the roles available from AWS."""
         return self.assertion.roles()
 
     def assume_role(self):

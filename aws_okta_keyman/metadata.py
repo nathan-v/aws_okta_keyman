@@ -14,7 +14,7 @@
 # Copyright 2018 Nathan V
 """Package metadata."""
 
-__version__ = '0.4.0'
+__version__ = '0.5.0'
 __desc__ = 'AWS Okta Keyman'
 __desc_long__ = ('''
 ===============
@@ -23,8 +23,7 @@ AWS Okta Keyman
 AWS Okta Keyman is a command-line interface for retrieving temporary
 credentials from AWS for use during development. It authenticates with Okta
 and then retrieves keys from AWS. These are saved in ~/aws/credentials for
-use with other software. AWS Okta Keyman supports Okta Verify and Duo Auth
-for MFA.
+use with other software. AWS Okta Keyman supports multiple MFA solutions.
 
 It's based on `nd_okta_auth <http://github.com/Nextdoor/nd_okta_auth>`_
 by `Nextdoor.com, Inc <https://github.com/Nextdoor>`_.

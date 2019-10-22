@@ -29,6 +29,7 @@ import requests
 from aws_okta_keyman import aws, okta, okta_saml
 from aws_okta_keyman.config import Config
 from aws_okta_keyman.metadata import __desc__, __version__
+from aws_okta_keyman.duo import PasscodeRequired, FactorRequired
 
 
 class Keyman:
@@ -123,6 +124,21 @@ class Keyman:
             )
             self.log.info(msg)
 
+    def handle_duo_factor_selection(self):
+        """If we have no Duo factor but are using Duo MFA the user needs to
+        select a preferred factor so we can move ahead with Duo
+        """
+        msg = 'No Duo Auth factor specified; please select one:'
+        self.log.warning(msg)
+
+        factors = [{'name': 'Duo Push', 'factor': 'push'},
+                   {'name': 'OTP Passcode', 'factor': 'passcode'},
+                   {'name': 'Phone call', 'factor': 'call'}]
+        duo_factor_index = self.selector_menu(factors, 'name', 'Factor')
+        msg = "Using factor: {}".format(factors[duo_factor_index]["name"])
+        self.log.info(msg)
+        return factors[duo_factor_index]['factor']
+
     def init_okta(self, password):
         """Initialize the Okta client or exit if the client received an empty
         input value
@@ -132,11 +148,14 @@ class Keyman:
                 self.okta_client = okta_saml.OktaSaml(self.config.org,
                                                       self.config.username,
                                                       password,
+                                                      self.config.duo_factor,
                                                       oktapreview=True)
             else:
+                duo_factor = self.config.duo_factor
                 self.okta_client = okta_saml.OktaSaml(self.config.org,
                                                       self.config.username,
-                                                      password)
+                                                      password,
+                                                      duo_factor=duo_factor)
 
         except okta.EmptyInput:
             self.log.fatal('Cannot enter a blank string for any input')
@@ -174,6 +193,18 @@ class Keyman:
                 verified = self.okta_client.validate_answer(err.factor['id'],
                                                             err.state_token,
                                                             answer)
+        except FactorRequired:
+            factor = self.handle_duo_factor_selection()
+            self.okta_client.duo_factor = factor
+            self.auth_okta()
+        except PasscodeRequired as err:
+            self.log.warning("OTP Requirement Detected - Enter your code here")
+            verified = False
+            while not verified:
+                passcode = self.user_input('MFA Passcode: ')
+                verified = self.okta_client.duo_auth(err.factor,
+                                                     err.state_token,
+                                                     passcode)
         except okta.UnknownError as err:
             self.log.fatal("Fatal error: {}".format(err))
             sys.exit(1)

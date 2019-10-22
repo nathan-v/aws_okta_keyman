@@ -41,6 +41,7 @@ class Config:
         self.reup = None
         self.debug = None
         self.appid = None
+        self.duo_factor = None
         self.name = 'default'
         self.oktapreview = None
 
@@ -182,6 +183,14 @@ class Config:
                                        'Automatically re-up the AWS creds '
                                        'before they expire.'
                                    ), default=0)
+        optional_args.add_argument('-d', '--duo_factor', type=str,
+                                   help=(
+                                       'Duo Auth preferred MFA factor. '
+                                       'This prevents getting prompted each '
+                                       'time Keyman is run.'
+                                   ),
+                                   default=None,
+                                   choices=['web', 'push', 'call', 'passcode'])
         optional_args.add_argument('-n', '--name', type=str,
                                    help='AWS Profile Name', default='default')
         optional_args.add_argument('-c', '--config', type=str,

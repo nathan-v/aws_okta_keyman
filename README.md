@@ -1,6 +1,10 @@
-[![Apache](https://img.shields.io/badge/license-Apache-blue.svg)](https://github.com/nathan-v/aws_okta_keyman/blob/master/LICENSE.txt) [![PyPI version](https://badge.fury.io/py/aws-okta-keyman.svg)](https://badge.fury.io/py/aws-okta-keyman) [![Python versions](https://img.shields.io/pypi/pyversions/aws-okta-keyman.svg?style=flat-square)](https://pypi.python.org/pypi/aws-okta-keyman/0.2.0) [![Downloads](http://pepy.tech/badge/aws-okta-keyman)](http://pepy.tech/count/aws-okta-keyman)
+[![Apache](https://img.shields.io/badge/license-Apache-blue.svg)](https://github.com/nathan-v/aws_okta_keyman/blob/master/LICENSE.txt) [![Python versions](https://img.shields.io/pypi/pyversions/aws-okta-keyman.svg?style=flat-square)](https://pypi.python.org/pypi/aws-okta-keyman/0.2.0) [![PyPI version](https://badge.fury.io/py/aws-okta-keyman.svg)](https://badge.fury.io/py/aws-okta-keyman) ![PyPI - Status](https://img.shields.io/pypi/status/aws_okta_keyman) [![Downloads](http://pepy.tech/badge/aws-okta-keyman)](http://pepy.tech/count/aws-okta-keyman)
 
-[![CircleCI](https://circleci.com/gh/nathan-v/aws_okta_keyman/tree/master.svg?style=svg&circle-token=93e91f099440edc9f62378bb3f056af8b0841231)](https://circleci.com/gh/nathan-v/aws_okta_keyman/tree/master) [![CC GPA](https://codeclimate.com/github/nathan-v/aws_okta_keyman/badges/gpa.svg)](https://codeclimate.com/github/nathan-v/aws_okta_keyman) [![CC Issues](https://codeclimate.com/github/nathan-v/aws_okta_keyman/badges/issue_count.svg)](https://codeclimate.com/github/nathan-v/aws_okta_keyman) [![Coverage Status](https://codecov.io/gh/nathan-v/aws_okta_keyman/branch/master/graph/badge.svg)](https://codecov.io/gh/nathan-v/aws_okta_keyman)
+[![CC GPA](https://codeclimate.com/github/nathan-v/aws_okta_keyman/badges/gpa.svg)](https://codeclimate.com/github/nathan-v/aws_okta_keyman) [![CC Issues](https://codeclimate.com/github/nathan-v/aws_okta_keyman/badges/issue_count.svg)](https://codeclimate.com/github/nathan-v/aws_okta_keyman) [![Coverage Status](https://codecov.io/gh/nathan-v/aws_okta_keyman/branch/master/graph/badge.svg)](https://codecov.io/gh/nathan-v/aws_okta_keyman) ![GitHub issues](https://img.shields.io/github/issues-raw/nathan-v/aws_okta_keyman)
+
+[![Requirements Status](https://requires.io/github/nathan-v/aws_okta_keyman/requirements.svg?branch=master)](https://requires.io/github/nathan-v/aws_okta_keyman/requirements/?branch=master) [![Known Vulnerabilities](https://snyk.io/test/github/nathan-v/aws_okta_keyman/badge.svg)](https://snyk.io/test/github/nathan-v/aws_okta_keyman)
+
+[![CircleCI](https://circleci.com/gh/nathan-v/aws_okta_keyman/tree/master.svg?style=svg)](https://circleci.com/gh/nathan-v/aws_okta_keyman/tree/master)
 
 # AWS Okta Keyman
 
@@ -9,32 +13,35 @@ temporary Amazon AWS Credentials. This tool makes it easy and secure for your
 developers to generate short-lived, [logged and user-attributed][tracking]
 credentials that can be used for any of the Amazon SDK libraries or CLI tools.
 
-# Features
+## Features
 
 We have support for logging into Okta, optionally handling MFA Authentication,
-and then generating new SAML authenticated AWS sessions. In paritcular, this
+and then generating new SAML authenticated AWS sessions. In particular, this
 tool has a few core features.
 
-## Optional MFA Authentication
+### Optional MFA Authentication
 
 If you organization requires MFA for the _[initial login into Okta][okta_mfa]_, 
 we will automatically detect that requirement during authentication and prompt
 the user to complete the Multi Factor Authentication.
 
-In paritcular, there is support for standard passcode based auth, as well as
-support for [Okta Verify with Push][okta_verify] and Duo Auth. If both are available,
-Okta Verify with Push will be prioritized and a push notification is
+In particular, there is support for standard passcode based auth, as well as
+support for [Okta Verify with Push][okta_verify] and [Duo Auth][duo_auth]. If both
+are available, Okta Verify with Push will be prioritized and a push notification is
 _automatically sent to the user_. If the user declines the validation, then
 optionally the Passcode can be entered in manually.
 
-In the case of Duo Auth a web page is opened (served locally) for the user to
-interact with Duo and select their preferred authentication method. Once Duo is
-successful the user may close the browser or tab.
+For Duo Auth Duo wants you to use a web page to load their iframe to pick your factor
+and then move forward from there. That is one option and the one most likely to keep
+working. This tool now also has an alternative browserless option that attempts to
+use Duo for MFA without a browser. This may eventually be stopped/prevented by Duo
+but makes this tool work on remote servers or in any other case where you may not
+be able to use a browser.
 
-### Supported MFA Solutions
+#### Supported MFA Solutions
 
 * Okta Verify
-* Duo Auth
+* Duo Auth (push, call, or OTP)
 * Okta OTP
 * Google Auth OTP
 * SMS OTP
@@ -44,9 +51,9 @@ successful the user may close the browser or tab.
 Windows Hello, U2F, email, and physical token (RSA, Symantec) are not supported
 at this time.
 
-## Multiple AWS Roles
+### Multiple AWS Roles
 
-AWS Okta Keyman supports multiple AWS roles when configued. The user is prompted to
+AWS Okta Keyman supports multiple AWS roles when configured. The user is prompted to
 select the role they wish to use before the temporary keys are generated. An example
 of this is shown here:
 
@@ -58,7 +65,7 @@ of this is shown here:
     17:10:22   (INFO) Assuming role: arn:aws:iam::012345678910:role/admin_full
 
 
-## Re-Up Mode .. Automatic Credential Re-Generation
+### Re-Up Mode .. Automatic Credential Re-Generation
 
 Amazon IAM only supports Federated Login sessions that last up to *1 hour*. For
 developers, it can be painful to re-authenticate every hour during your work
@@ -72,7 +79,7 @@ your Login Session to be - often a full work day.
 
 See the `--reup` commandline option for help here!
 
-## Config file .. predefined settings for you or your org
+### Config file .. predefined settings for you or your org
 
 The config file, which defaults to `~/.config/aws_okta_keyman.yml`, allows you to
 pre-set things like your username, Okta organization name (subdomain), and AWS accounts and App IDs to make this script simpler to use. This also supports username assumption
@@ -106,16 +113,20 @@ accounts:
     Select an account from above: 0
     16:56:49   (INFO) Using account: Test / exampleAppIDFromOkta/123
 
-# Usage
+### Python Versions
 
-## Client Setup
+Python 2.7.4+ and Python 3.5.0+ are supported
+
+## Usage
+
+### Client Setup
 
 Before you can install this tool you need to have a working Python installation with pip.
 If you're not sure if you have this a good place to start would be the [Python Beginner's Guide](https://wiki.python.org/moin/BeginnersGuide/Download) .
 
 Once your Python environment is configured simply run `pip install aws-okta-keyman` to install the tool.
 
-## Running AWS Okta Keyman
+### Running AWS Okta Keyman
 
 For detailed usage instructions, see the `--help` commandline argument.
 
@@ -135,7 +146,7 @@ Typical usage:
     08:28:11   (INFO) Session expires at 2017-07-24 16:28:13+00:00
     $
 
-## Okta Setup
+### Okta Setup
 Before you can use this tool, your Okta administrator needs to set up
 [Amazon/Okta integration][okta_aws_guide] using SAML roles.
 
@@ -149,29 +160,10 @@ The original code is heavily based on the previous work done by
 [ThoughtWorksInc][thoughtworksinc] on their [OktaAuth][oktaauth] and [AWS Role
 Credentials][aws_role_credentials] tools.
 
-# Developer Setup
+## Developer Info
 
-If you are interested in working on the codebase, setting up your development
-environment is quick and easy.
-
-    $ virtualenv .venv
-    $ source .venv/bin/activate
-    $ pip install -r requirements.txt
-    $ pip install -r test_requirements.txt
+See CONTRIBUTING.md for more information on contributing to this project.
     
-## Python Versions
-
-Python 2.7.1+ and Python 3.5.0+ are supported
-
-## Running Tests
-
-    $ nosetests -vv --with-coverage --cover-erase --cover-package=aws_okta_keyman
-
-## Code Style
-
-This project uses `pycodestyle` and `pyflakes` to check for style errors. Please
-use these tools to check changes before submitting PRs.
-
 ## License
 
 Copyright 2018 Nathan V
@@ -195,3 +187,4 @@ license is in the LICENSE_MIT.txt file.
 [okta_mfa]: https://www.okta.com/products/adaptive-multi-factor-authentication/
 [okta_verify]: https://www.okta.com/blog/tag/okta-verify-with-push/
 [aws_saml]: http://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRoleWithSAML.html
+[duo_auth]: https://duo.com/
