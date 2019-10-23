@@ -51,19 +51,20 @@ class Config:
 
     def validate(self):
         """Ensure we have all the settings we need before continuing."""
-        if self.appid is None:
-            if not self.accounts:
-                raise ValueError('The appid parameter is required if accounts '
-                                 'have not been set in the config file.')
-        required = ['org', 'username']
-        for arg in required:
-            if getattr(self, arg) is None:
-                err = ("The parameter {} must be provided in the config file "
-                       "or as an argument".format(arg))
-                raise ValueError(err)
+        if getattr(self, 'org') is None:
+            err = ("The parameter org must be provided in the config file "
+                   "or as an argument")
+            raise ValueError(err)
 
-        self.username = self.username.replace('automatic-username',
-                                              getpass.getuser())
+        if self.username is None:
+            user = getpass.getuser()
+            LOG.info(
+                "No username provided; defaulting to current user '{}'".format(
+                    user))
+            self.username = user
+        elif 'automatic-username' in self.username:
+            self.username = self.username.replace('automatic-username',
+                                                  getpass.getuser())
 
     def get_config(self):
         """Get the config and set everything up based on the args and/or local
@@ -149,33 +150,31 @@ class Config:
                                    'enter in foobar here'
                                ),
                                required=required)
-        arg_group.add_argument('-u', '--username', type=str,
-                               help=(
-                                   'Okta Login Name - either '
-                                   'bob@foobar.com, or just bob works too,'
-                                   ' depending on your organization '
-                                   'settings.'
-                               ),
-                               required=required)
-        arg_group.add_argument('-a', '--appid', type=str,
-                               help=(
-                                   'The "redirect link" Application ID  - '
-                                   'this can be found by mousing over the '
-                                   'application in Okta\'s Web UI. See '
-                                   'details below for more help.'
-                               ),
-                               required=required)
 
     @staticmethod
     def optional_args(optional_args):
         """Define the always-optional arguments."""
+        optional_args.add_argument('-u', '--username', type=str, help=(
+                                   'Okta Login Name - either '
+                                   'bob@foobar.com, or just bob works too,'
+                                   ' depending on your organization '
+                                   'settings. Will use the current user if not'
+                                   'specified.'
+                                   )),
+        optional_args.add_argument('-a', '--appid', type=str, help=(
+                                   'The "redirect link" Application ID  - '
+                                   'this can be found by mousing over the '
+                                   'application in Okta\'s Web UI. See '
+                                   'details below for more help.'
+                                   ))
         optional_args.add_argument('-V', '--version', action='version',
                                    version=__version__)
         optional_args.add_argument('-D', '--debug', action='store_true',
                                    help=(
                                        'Enable DEBUG logging - note, this is '
                                        'extremely verbose and exposes '
-                                       'credentials so be careful here!'
+                                       'credentials on the screen so be '
+                                       'careful here!'
                                    ),
                                    default=False)
         optional_args.add_argument('-r', '--reup', action='store_true',

@@ -1,10 +1,10 @@
-[![Apache](https://img.shields.io/badge/license-Apache-blue.svg)](https://github.com/nathan-v/aws_okta_keyman/blob/master/LICENSE.txt) [![Python versions](https://img.shields.io/pypi/pyversions/aws-okta-keyman.svg?style=flat-square)](https://pypi.python.org/pypi/aws-okta-keyman/0.2.0) [![PyPI version](https://badge.fury.io/py/aws-okta-keyman.svg)](https://badge.fury.io/py/aws-okta-keyman) ![PyPI - Status](https://img.shields.io/pypi/status/aws_okta_keyman) [![Downloads](http://pepy.tech/badge/aws-okta-keyman)](http://pepy.tech/count/aws-okta-keyman)
+[![Apache](https://img.shields.io/badge/license-Apache-blue.svg)](https://github.com/nathan-v/aws_okta_keyman/blob/master/LICENSE.txt) [![Python versions](https://img.shields.io/pypi/pyversions/aws-okta-keyman.svg)](https://pypi.python.org/pypi/aws-okta-keyman/0.2.0) [![PyPI version](https://badge.fury.io/py/aws-okta-keyman.svg)](https://badge.fury.io/py/aws-okta-keyman) ![PyPI - Status](https://img.shields.io/pypi/status/aws_okta_keyman) [![Downloads](http://pepy.tech/badge/aws-okta-keyman)](http://pepy.tech/count/aws-okta-keyman)
 
 [![CC GPA](https://codeclimate.com/github/nathan-v/aws_okta_keyman/badges/gpa.svg)](https://codeclimate.com/github/nathan-v/aws_okta_keyman) [![CC Issues](https://codeclimate.com/github/nathan-v/aws_okta_keyman/badges/issue_count.svg)](https://codeclimate.com/github/nathan-v/aws_okta_keyman) [![Coverage Status](https://codecov.io/gh/nathan-v/aws_okta_keyman/branch/master/graph/badge.svg)](https://codecov.io/gh/nathan-v/aws_okta_keyman) ![GitHub issues](https://img.shields.io/github/issues-raw/nathan-v/aws_okta_keyman)
 
 [![Requirements Status](https://requires.io/github/nathan-v/aws_okta_keyman/requirements.svg?branch=master)](https://requires.io/github/nathan-v/aws_okta_keyman/requirements/?branch=master) [![Known Vulnerabilities](https://snyk.io/test/github/nathan-v/aws_okta_keyman/badge.svg)](https://snyk.io/test/github/nathan-v/aws_okta_keyman)
 
-[![CircleCI](https://circleci.com/gh/nathan-v/aws_okta_keyman/tree/master.svg?style=svg)](https://circleci.com/gh/nathan-v/aws_okta_keyman/tree/master)
+![CircleCI](https://img.shields.io/circleci/build/gh/nathan-v/aws_okta_keyman)
 
 # AWS Okta Keyman
 
@@ -16,14 +16,15 @@ credentials that can be used for any of the Amazon SDK libraries or CLI tools.
 ## Features
 
 We have support for logging into Okta, optionally handling MFA Authentication,
-and then generating new SAML authenticated AWS sessions. In particular, this
-tool has a few core features.
+and then generating new SAML authenticated AWS sessions. This tool has a few core
+features that help set it apart from other similar tools that are available.
 
 ### Optional MFA Authentication
 
 If you organization requires MFA for the _[initial login into Okta][okta_mfa]_, 
 we will automatically detect that requirement during authentication and prompt
-the user to complete the Multi Factor Authentication.
+the user to complete the Multi Factor Authentication. At this time
+application-level MFA is not supported.
 
 In particular, there is support for standard passcode based auth, as well as
 support for [Okta Verify with Push][okta_verify] and [Duo Auth][duo_auth]. If both
@@ -79,10 +80,25 @@ your Login Session to be - often a full work day.
 
 See the `--reup` commandline option for help here!
 
+
+### AWS Accounts from Okta
+
+As of v0.5.1 AWS Okta Keyman can pull the AWS Accounts that have been assigned
+from Okta itself which means the app ID value no longer needs to be provided in
+the command line or in the config file. A config file can still optionally be used
+to ensure account names or order if preferred.
+
+### Automatic Username
+
+As of v0.5.1 AWS Okta Keyman will use the current user as the username for Okta
+authentication if no username has been provided.
+
+
 ### Config file .. predefined settings for you or your org
 
 The config file, which defaults to `~/.config/aws_okta_keyman.yml`, allows you to
-pre-set things like your username, Okta organization name (subdomain), and AWS accounts and App IDs to make this script simpler to use. This also supports username assumption
+pre-set things like your username, Okta organization name (subdomain), and AWS accounts
+and App IDs to make this script simpler to use. This also supports username assumption
 based on the current user when the username or email is configured as
 `automatic-username` if usernames only are an option or
 `automatic-username@example.com` if you need full emails. Arguments will always

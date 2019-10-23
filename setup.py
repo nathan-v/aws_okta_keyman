@@ -18,7 +18,7 @@ import sys
 
 from setuptools import Command, find_packages, setup
 
-from aws_okta_keyman.metadata import __desc__, __desc_long__, __version__
+from aws_okta_keyman.metadata import __desc__, __version__
 
 PACKAGE = 'aws_okta_keyman'
 DIR = os.path.dirname(os.path.realpath(__file__))
@@ -83,7 +83,8 @@ setup(
     name=PACKAGE,
     version=__version__,
     description=__desc__,
-    long_description=__desc_long__,
+    long_description=open("{}/README.md".format(DIR)).read(),
+    long_description_content_type='text/markdown',
     author='Nathan V',
     author_email='nathan.v@gmail.com',
     url='https://github.com/nathan-v/aws_okta_keyman',

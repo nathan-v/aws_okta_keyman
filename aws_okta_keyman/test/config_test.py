@@ -40,13 +40,6 @@ class ConfigTest(unittest.TestCase):
         config.username = 'user@example.com'
         self.assertEqual(config.validate(), None)
 
-    def test_validate_missing_username(self):
-        config = Config(['aws_okta_keyman.py'])
-        config.accounts = [{'appid': 'A123'}]
-        config.org = 'example'
-        with self.assertRaises(ValueError):
-            config.validate()
-
     def test_validate_missing_org(self):
         config = Config(['aws_okta_keyman.py'])
         config.accounts = [{'appid': 'A123'}]
@@ -54,12 +47,35 @@ class ConfigTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             config.validate()
 
-    def test_validate_missing_appid_and_accounts(self):
+    @mock.patch('aws_okta_keyman.config.getpass')
+    def test_validate_automatic_username_from_none(self, getpass_mock):
+        getpass_mock.getuser.return_value = 'user'
         config = Config(['aws_okta_keyman.py'])
-        config.username = 'user@example.com'
+        config.accounts = [{'appid': 'A123'}]
         config.org = 'example'
-        with self.assertRaises(ValueError):
-            config.validate()
+        config.validate()
+        self.assertEqual(config.username, 'user')
+
+    @mock.patch('aws_okta_keyman.config.getpass')
+    def test_validate_automatic_username_from_partial_config(self,
+                                                             getpass_mock):
+        getpass_mock.getuser.return_value = 'user'
+        config = Config(['aws_okta_keyman.py'])
+        config.accounts = [{'appid': 'A123'}]
+        config.org = 'example'
+        config.username = 'automatic-username'
+        config.validate()
+        self.assertEqual(config.username, 'user')
+
+    @mock.patch('aws_okta_keyman.config.getpass')
+    def test_validate_automatic_username_from_full_config(self, getpass_mock):
+        getpass_mock.getuser.return_value = 'user'
+        config = Config(['aws_okta_keyman.py'])
+        config.accounts = [{'appid': 'A123'}]
+        config.org = 'example'
+        config.username = 'automatic-username@example.com'
+        config.validate()
+        self.assertEqual(config.username, 'user@example.com')
 
     @mock.patch('aws_okta_keyman.config.Config.validate')
     @mock.patch('aws_okta_keyman.config.Config.parse_args')

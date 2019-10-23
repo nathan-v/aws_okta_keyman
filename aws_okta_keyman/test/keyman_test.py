@@ -59,6 +59,23 @@ class KeymanTest(unittest.TestCase):
         assert keyman.aws_auth_loop.called
 
     @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_main_post_okta_appid_selection(self, _config_mock):
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar'])
+        keyman.handle_appid_selection = mock.MagicMock()
+        keyman.config.appid = None
+        keyman.user_password = mock.MagicMock()
+        keyman.user_password.return_value = 'foo'
+        keyman.init_okta = mock.MagicMock()
+        keyman.auth_okta = mock.MagicMock()
+        keyman.aws_auth_loop = mock.MagicMock()
+        keyman.handle_appid_selection = mock.MagicMock()
+        keyman.main()
+        keyman.handle_appid_selection.assert_has_calls([
+            mock.call(),
+            mock.call(okta_ready=True)
+        ])
+
+    @mock.patch('aws_okta_keyman.keyman.Config')
     def test_main_keyboard_interrupt(self, _config_mock):
         keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
         keyman.handle_appid_selection = mock.MagicMock()
@@ -133,7 +150,10 @@ class KeymanTest(unittest.TestCase):
     @mock.patch('aws_okta_keyman.keyman.Config')
     def test_handle_appid_selection(self, _config_mock):
         keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar'])
-        keyman.config.accounts = [{'name': 'myAccount', 'appid': 'myID'}]
+        keyman.config.accounts = [
+            {'name': 'myAccount', 'appid': 'myID'},
+            {'name': 'myAccount', 'appid': 'myID'}
+        ]
         keyman.config.appid = None
         keyman.selector_menu = mock.MagicMock(name='selector_menu')
         keyman.selector_menu.return_value = 0
@@ -143,12 +163,54 @@ class KeymanTest(unittest.TestCase):
 
         keyman.selector_menu.assert_has_calls([
             mock.call(
-                [{'name': 'myAccount', 'appid': 'myID'}],
+                [{'name': 'myAccount', 'appid': 'myID'},
+                 {'name': 'myAccount', 'appid': 'myID'}],
                 'name', 'Account')
         ])
         keyman.config.set_appid_from_account_id.assert_has_calls([
             mock.call(0)
         ])
+
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_handle_appid_selection_one_account(self, _config_mock):
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar'])
+        keyman.config.accounts = [{'name': 'myAccount', 'appid': 'myID'}]
+        keyman.config.appid = None
+        keyman.config.set_appid_from_account_id = mock.MagicMock()
+        keyman.handle_appid_selection()
+
+        keyman.config.set_appid_from_account_id.assert_has_calls([
+            mock.call(0)
+        ])
+
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_handle_appid_selection_no_appid(self, _config_mock):
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar'])
+        keyman.config.accounts = None
+        keyman.config.appid = None
+        keyman.selector_menu = mock.MagicMock(name='selector_menu')
+        keyman.selector_menu.return_value = 0
+        keyman.config.set_appid_from_account_id = mock.MagicMock()
+
+        ret = keyman.handle_appid_selection()
+        self.assertEqual(ret, None)
+
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_handle_appid_selection_from_okta(self, _config_mock):
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar'])
+        keyman.config.accounts = None
+        keyman.config.appid = None
+        keyman.selector_menu = mock.MagicMock(name='selector_menu')
+        keyman.selector_menu.return_value = 0
+        keyman.config.set_appid_from_account_id = mock.MagicMock()
+        keyman.okta_client = mock.MagicMock()
+        keyman.okta_client.get_aws_apps.return_value = [
+            {'name': 'myAccount', 'appid': 'myID'}
+        ]
+
+        keyman.handle_appid_selection(okta_ready=True)
+
+        assert keyman.okta_client.get_aws_apps.called
 
     @mock.patch('aws_okta_keyman.keyman.Config')
     def test_handle_duo_factor_selection(self, _config_mock):
