@@ -237,6 +237,7 @@ class OktaTest(unittest.TestCase):
         client.session.post.assert_called_with(
             headers={'Content-Type': 'application/json',
                      'Accept': 'application/json'},
+            cookies={'sid': None},
             json={'test': True},
             url='https://organization.okta.com/api/v1/test',
             allow_redirects=False)
@@ -263,6 +264,7 @@ class OktaTest(unittest.TestCase):
         client.session.post.assert_called_with(
             headers={'Content-Type': 'application/json',
                      'Accept': 'application/json'},
+            cookies={'sid': None},
             json={'test': True},
             url='http://test/test',
             allow_redirects=False)
@@ -287,8 +289,13 @@ class OktaTest(unittest.TestCase):
     def test_set_token(self):
         client = okta.Okta('organization', 'username', 'password')
         client.session = mock.MagicMock(name='session')
+        client._request = mock.MagicMock()
+        client._request.return_value = {'id': 'LongToken'}
         client.set_token(SUCCESS_RESPONSE)
-        self.assertEqual(client.session_token, 'XXXTOKENXXX')
+        self.assertEqual(client.session_token, 'LongToken')
+        client._request.assert_has_calls([
+            mock.call('/sessions', {'sessionToken': 'XXXTOKENXXX'})
+            ])
 
     def test_validate_mfa(self):
         client = okta.Okta('organization', 'username', 'password')
@@ -390,7 +397,7 @@ class OktaTest(unittest.TestCase):
         client = okta.Okta('organization', 'username', 'password')
         client._request = mock.MagicMock(name='_request')
         client.mfa_wait_loop = mock.MagicMock(name='mfa_wait_loop')
-
+        client.set_token = mock.MagicMock()
         client._request.return_value = MFA_WAITING_RESPONSE
 
         ret = client.okta_verify('123', 'token')
@@ -440,6 +447,7 @@ class OktaTest(unittest.TestCase):
         client._request = mock.MagicMock(name='_request')
         client._request.return_value = MFA_WAITING_RESPONSE
         client.mfa_wait_loop = mock.MagicMock(name='mfa_wait_loop')
+        client.set_token = mock.MagicMock()
         client.duo_factor = "push"
 
         ret = client.duo_auth('123', 'token')
@@ -456,6 +464,7 @@ class OktaTest(unittest.TestCase):
         client._request = mock.MagicMock(name='_request')
         client._request.return_value = MFA_WAITING_RESPONSE
         client.mfa_wait_loop = mock.MagicMock(name='mfa_wait_loop')
+        client.set_token = mock.MagicMock()
         client.duo_factor = "passcode"
 
         client.duo_auth('123', 'token', '000000')
@@ -497,7 +506,7 @@ class OktaTest(unittest.TestCase):
         client = okta.Okta('organization', 'username', 'password')
         client._request = mock.MagicMock(name='_request')
         client._request.side_effect = [SUCCESS_RESPONSE]
-
+        client.set_token = mock.MagicMock()
         ret = client.auth()
         self.assertEqual(ret, None)
 
@@ -757,6 +766,22 @@ class OktaTest(unittest.TestCase):
             mock.call('/authn/factors/foo/verify',
                       {'fid': 'foo', 'stateToken': 'bar'})
         ])
+
+    def test_get_aws_apps(self):
+        client = okta.Okta('organization', 'username', 'password')
+        client.session = mock.MagicMock()
+        json_response = [
+            {'label': 'label1', 'linkUrl': '/////1', 'appName': 'amazon_aws'},
+            {'label': 'label2', 'linkUrl': '/////2', 'appName': 'amazon_aws'},
+            {'label': 'label1', 'linkUrl': 'URL1', 'appName': 'not_aws'},
+        ]
+        fake_response_object = mock.MagicMock(name='response')
+        fake_response_object.json.return_value = json_response
+        client.session.get.return_value = fake_response_object
+
+        ret = client.get_aws_apps()
+        assert {'name': 'label1', 'appid': '1'} in ret
+        assert {'name': 'label2', 'appid': '2'} in ret
 
 
 class PasscodeRequiredTest(unittest.TestCase):

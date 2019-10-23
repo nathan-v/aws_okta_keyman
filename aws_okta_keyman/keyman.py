@@ -63,6 +63,10 @@ class Keyman:
             # Authenticate to Okta
             self.auth_okta()
 
+            # If still no appid get a list from Okta and have user pick
+            if self.config.appid is None:
+                self.handle_appid_selection(okta_ready=True)
+
             # Start the AWS session and loop (if using reup)
             self.aws_auth_loop()
 
@@ -109,15 +113,25 @@ class Keyman:
                 continue
         return selection
 
-    def handle_appid_selection(self):
+    def handle_appid_selection(self, okta_ready=False):
         """If we have no appid specified and we have accounts from a config
         file display the options to the user and select one
         """
-        if self.config.appid is None and self.config.accounts:
-            msg = 'No app ID provided; select from available AWS accounts'
-            self.log.warning(msg)
-            accts = self.config.accounts
-            acct_selection = self.selector_menu(accts, 'name', 'Account')
+        if self.config.appid is None:
+            accts = None
+            if self.config.accounts:
+                accts = self.config.accounts
+            elif okta_ready:
+                self.config.accounts = self.okta_client.get_aws_apps()
+                accts = self.config.accounts
+            else:
+                return
+
+            acct_selection = 0
+            if len(accts) > 1:
+                msg = 'No app ID provided; select from available AWS accounts'
+                self.log.warning(msg)
+                acct_selection = self.selector_menu(accts, 'name', 'Account')
             self.config.set_appid_from_account_id(acct_selection)
             msg = "Using account: {} / {}".format(
                 accts[acct_selection]["name"], accts[acct_selection]["appid"]

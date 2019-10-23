@@ -48,7 +48,7 @@ class OktaSaml(okta.Okta):
         path = '{url}/home/{apptype}/{appid}'.format(
             url=self.base_url, apptype=apptype, appid=appid)
         resp = self.session.get(path,
-                                params={'onetimetoken': self.session_token})
+                                cookies={'sid': self.session_token})
         LOG.debug(resp.__dict__)
 
         try:

@@ -129,7 +129,8 @@ class Okta(object):
             url = '{base}/api/v1{path}'.format(base=self.base_url, path=path)
 
         resp = self.session.post(url=url, headers=headers, json=data,
-                                 allow_redirects=False)
+                                 allow_redirects=False,
+                                 cookies={'sid': self.session_token})
 
         resp_obj = resp.json()
         LOG.debug(resp_obj)
@@ -138,12 +139,13 @@ class Okta(object):
         return resp_obj
 
     def set_token(self, ret):
-        """Parse an authentication response and stores the token.
+        """Parse an authentication response, get a long-lived token, store it
 
-        Parses a SUCCESSFUL authentication response from Okta and stores the
-        token.
+        Parses a SUCCESSFUL authentication response from Okta to get the
+        one time use token, requests a long-lived sessoin token from Okta,  and
+        stores the new token.
 
-        args:
+        Args:
             ret: The response from Okta that we know is successful and contains
             a sessionToken
         """
@@ -151,7 +153,9 @@ class Okta(object):
         last_name = ret['_embedded']['user']['profile']['lastName']
         LOG.info('Successfully authed {first_name} {last_name}'.format(
             first_name=first_name, last_name=last_name))
-        self.session_token = ret['sessionToken']
+        resp = self._request('/sessions',
+                             {'sessionToken': ret['sessionToken']})
+        self.session_token = resp['id']
 
     def validate_mfa(self, fid, state_token, passcode):
         """Validate an Okta user with Passcode-based MFA.
@@ -511,3 +515,30 @@ class Okta(object):
         data = {'fid': fid,
                 'stateToken': state_token}
         self._request(path, data)
+
+    def get_aws_apps(self):
+        """Call Okta to get a list of the AWS apps that a user is able to
+        access
+
+        Returns: Dict of AWS account IDs and names
+        """
+        path = "/users/me/appLinks"
+        headers = {'Accept': 'application/json',
+                   'Content-Type': 'application/json'}
+        url = '{base}/api/v1{path}'.format(base=self.base_url, path=path)
+        cookies = {'sid': self.session_token}
+
+        resp = self.session.get(url=url, headers=headers,
+                                allow_redirects=False, cookies=cookies)
+        resp_obj = resp.json()
+        LOG.debug(resp_obj)
+
+        resp.raise_for_status()
+        aws_list = {i['label']: i['linkUrl'] for i in resp_obj
+                    if i['appName'] == 'amazon_aws'}
+
+        accounts = []
+        for k, v in aws_list.items():
+            appid = v.split("/", 5)[5]
+            accounts.append({'name': k, 'appid': appid})
+        return accounts
