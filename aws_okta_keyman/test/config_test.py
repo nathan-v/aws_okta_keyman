@@ -16,6 +16,13 @@ else:
 
 class ConfigTest(unittest.TestCase):
 
+    @mock.patch('aws_okta_keyman.config.sys.exit')
+    @mock.patch('aws_okta_keyman.config.Config.interactive_config')
+    def test_start_interactive_config(self, int_mock, exit_mock):
+        Config(['aws_okta_keyman.py', 'config'])
+        assert int_mock.called
+        assert exit_mock.called
+
     @mock.patch('aws_okta_keyman.config.Config.parse_config')
     @mock.patch('aws_okta_keyman.config.os.path.isfile')
     def test_set_appid_from_account_id(self, isfile_mock, parse_mock):
@@ -529,3 +536,59 @@ class ConfigTest(unittest.TestCase):
         }
         ret = Config.clean_config_for_write(config_in)
         self.assertEqual(ret, config_out)
+
+    @mock.patch('aws_okta_keyman.config.input')
+    def test_user_input(self, input_mock):
+        input_mock.return_value = 'test'
+        self.assertEqual('test', Config.user_input('input test'))
+
+    @mock.patch('aws_okta_keyman.config.getpass')
+    @mock.patch('aws_okta_keyman.config.input')
+    def test_interactive_config(self, input_mock, getpass_mock):
+        input_mock.side_effect = ['org', 'user', 'appid', 'test']
+        getpass_mock.return_value = 'fakeuser'
+        config = Config(['aws_okta_keyman.py'])
+        config.write_config = mock.MagicMock()
+
+        config.interactive_config()
+
+        self.assertEqual(config.org, 'org')
+        self.assertEqual(config.username, 'user')
+        self.assertEqual(config.accounts, [{'name': 'test', 'appid': 'appid'}])
+        config.write_config.assert_has_calls([mock.call()])
+
+    @mock.patch('aws_okta_keyman.config.getpass')
+    @mock.patch('aws_okta_keyman.config.input')
+    def test_interactive_config_auto_user(self, input_mock, getpass_mock):
+        input_mock.side_effect = ['org', '', 'appid', 'test']
+        getpass_mock.return_value = 'fakeuser'
+        config = Config(['aws_okta_keyman.py'])
+        config.write_config = mock.MagicMock()
+
+        config.interactive_config()
+
+        self.assertEqual(config.username, 'automatic-username')
+
+    @mock.patch('aws_okta_keyman.config.getpass')
+    @mock.patch('aws_okta_keyman.config.input')
+    def test_interactive_config_auto_account(self, input_mock, getpass_mock):
+        input_mock.side_effect = ['org', 'user', '']
+        getpass_mock.return_value = 'fakeuser'
+        config = Config(['aws_okta_keyman.py'])
+        config.write_config = mock.MagicMock()
+
+        config.interactive_config()
+
+        self.assertEqual(config.accounts, None)
+
+    @mock.patch('aws_okta_keyman.config.getpass')
+    @mock.patch('aws_okta_keyman.config.input')
+    def test_interactive_config_keyboardexit(self, input_mock, getpass_mock):
+        input_mock.side_effect = ['org', 'user', KeyboardInterrupt]
+        getpass_mock.return_value = 'fakeuser'
+        config = Config(['aws_okta_keyman.py'])
+        config.write_config = mock.MagicMock()
+
+        ret = config.interactive_config()
+        self.assertEqual(ret, None)
+        assert not config.write_config.called

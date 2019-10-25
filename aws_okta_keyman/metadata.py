@@ -14,5 +14,5 @@
 # Copyright 2018 Nathan V
 """Package metadata."""
 
-__version__ = '0.5.1'
+__version__ = '0.5.2'
 __desc__ = 'AWS Okta Keyman'

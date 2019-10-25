@@ -129,6 +129,12 @@ accounts:
     Select an account from above: 0
     16:56:49   (INFO) Using account: Test / exampleAppIDFromOkta/123
 
+### Interactive Configuration
+
+For interactive configuration and creation of the config file you can start the tool with just config as a parameter and you will be propted to provide the basic information needed to get started.
+
+`aws_okta_keyman config`
+
 ### Python Versions
 
 Python 2.7.4+ and Python 3.5.0+ are supported

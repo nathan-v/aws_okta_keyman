@@ -20,6 +20,7 @@ import argparse
 import getpass
 import logging
 import os
+import sys
 
 import yaml
 
@@ -34,7 +35,7 @@ class Config:
     def __init__(self, argv):
         self.argv = argv
         self.config = None
-        self.writepath = None
+        self.writepath = '~/.config/aws_okta_keyman.yml'
         self.org = None
         self.accounts = None
         self.username = None
@@ -44,6 +45,11 @@ class Config:
         self.duo_factor = None
         self.name = 'default'
         self.oktapreview = None
+
+        if len(argv) > 1:
+            if argv[1] == 'config':
+                self.interactive_config()
+                sys.exit(0)
 
     def set_appid_from_account_id(self, account_id):
         """Take an account ID (list index) and sets the appid based on that."""
@@ -105,7 +111,10 @@ class Config:
             'AWS Okta Keyman can use a config file to pre-configure most of\n'
             'the settings needed for execution. The default location is \n'
             '\'~/.config/aws_okta_keyman.yml\' on Linux/Mac or for Windows \n'
-            'it is \'$USERPROFILE\\.config\\aws_okta_keyman.yml\'\n')
+            'it is \'$USERPROFILE\\.config\\aws_okta_keyman.yml\'\n\n'
+            'To set up a basic config you can start aws_okta_keyman with '
+            'the sole argument \nof config and it will prompt you for the'
+            'basic config settings needed to get started\n')
         return epilog
 
     def parse_args(self, main_required=True):
@@ -265,3 +274,48 @@ class Config:
             del config['accounts']
 
         return config
+
+    @staticmethod
+    def user_input(text):
+        """Wrap input() making testing support of py2 and py3 easier."""
+        return input(text)
+
+    def interactive_config(self):
+        """ Runs an interactive configuration to make it simpler to create
+        the config file. Always uses default path.
+        """
+        LOG.info('Interactive setup requested')
+
+        try:
+            print("\nWhat is your Okta Organization subdomain?")
+            print("Example; for https://co.okta.com enter 'co'\n")
+            while not self.org:
+                self.org = self.user_input('Okta org: ')
+
+            print("\nWhat is your Okta user name?")
+            print("If it is {} you can leave this blank.\n".format(
+                getpass.getuser()))
+            self.username = self.user_input('Username: ')
+            if self.username == '':
+                self.username = 'automatic-username'
+
+            msg = (
+                '\nIf you use a single AWS integration you can optionally '
+                'provide the following answers. If you have multiple AWS '
+                'integrations or you are not sure of the answers just leave '
+                'these blank.')
+            print(msg)
+            print("\nWhat is your AWS integration app ID?")
+            print("Example; 0oaciCSo1d8/123")
+            appid = self.user_input('App ID: ')
+            if appid:
+                print("\nPlease provide a friendly name for this app.")
+                name = self.user_input('App ID: ')
+                self.accounts = [{'name': name, 'appid': appid}]
+
+            self.write_config()
+            print('')
+            LOG.info('Config file written. Please rerun Keyman')
+        except(KeyboardInterrupt):
+            print('')
+            LOG.warning('User cancelled configuration; exiting')
