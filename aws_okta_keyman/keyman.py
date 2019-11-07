@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: UTF-8 -*-
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,7 +39,7 @@ class Keyman:
     def __init__(self, argv):
         self.okta_client = None
         self.log = self.setup_logging()
-        self.log.info('{} v{}'.format(__desc__, __version__))
+        self.log.info('{} 🔐 v{}'.format(__desc__, __version__))
         self.config = Config(argv)
         try:
             self.config.get_config()
@@ -60,21 +61,30 @@ class Keyman:
             # Generate our initial OktaSaml client
             self.init_okta(password)
 
-            # Authenticate to Okta
-            self.auth_okta()
-
             # If still no appid get a list from Okta and have user pick
             if self.config.appid is None:
+                # Authenticate to Okta
+                self.auth_okta()
                 self.handle_appid_selection(okta_ready=True)
+            else:
+                # Authenticate to Okta
+                self.auth_okta()
 
             # Start the AWS session and loop (if using reup)
-            self.aws_auth_loop()
+            result = self.aws_auth_loop()
+            if result is not None:
+                sys.exit(result)
 
         except KeyboardInterrupt:
             # Allow users to exit cleanly at any time.
             print('')
-            self.log.info('Exiting after keyboard interrupt.')
+            self.log.info('Exiting after keyboard interrupt. 🛑')
             sys.exit(1)
+
+        except Exception as err:
+            msg = '😬 Unhandled exception: {}'.format(err)
+            self.log.fatal(msg)
+            sys.exit(5)
 
     @staticmethod
     def setup_logging():
@@ -145,9 +155,9 @@ class Keyman:
         msg = 'No Duo Auth factor specified; please select one:'
         self.log.warning(msg)
 
-        factors = [{'name': 'Duo Push', 'factor': 'push'},
-                   {'name': 'OTP Passcode', 'factor': 'passcode'},
-                   {'name': 'Phone call', 'factor': 'call'}]
+        factors = [{'name': '📲 Duo Push', 'factor': 'push'},
+                   {'name': '📟 OTP Passcode', 'factor': 'passcode'},
+                   {'name': '📞 Phone call', 'factor': 'call'}]
         duo_factor_index = self.selector_menu(factors, 'name', 'Factor')
         msg = "Using factor: {}".format(factors[duo_factor_index]["name"])
         self.log.info(msg)
@@ -228,17 +238,16 @@ class Keyman:
         with a list to pick from
         """
         self.log.warning('Multiple AWS roles found; please select one')
-        roles = session.available_roles()
-        role_selection = self.selector_menu(roles, 'role', 'Role')
-        session.set_role(role_selection)
-        session.assume_role()
-        return role_selection
+        roles, multiple_accounts = session.available_roles()
+        if multiple_accounts:
+            roles = session.account_ids_to_names(roles)
+        session.role = self.selector_menu(roles, 'role', 'Role')
 
     def start_session(self):
         """Initialize AWS session object."""
         try:
-            assertion = self.okta_client.get_assertion(appid=self.config.appid,
-                                                       apptype='amazon_aws')
+            assertion = self.okta_client.get_assertion(
+                appid=self.config.appid)
         except okta.UnknownError:
             sys.exit(1)
 
@@ -250,7 +259,6 @@ class Keyman:
         Credentials.
         """
         session = None
-        role_selection = None
         retries = 0
         while True:
             # If we have a session and it's valid take a nap
@@ -263,21 +271,21 @@ class Keyman:
                 org=self.config.org))
 
             try:
-                session = self.start_session()
-
-                # If role_selection is set we're in a reup loop. Re-set the
-                # role on the session to prevent the user being prompted for
-                # the role again on each subsequent renewal.
-                if role_selection is not None:
-                    session.set_role(role_selection)
+                if session is None:
+                    session = self.start_session()
 
                 session.assume_role()
 
             except aws.MultipleRoles:
-                role_selection = self.handle_multiple_roles(session)
+                self.handle_multiple_roles(session)
+                continue
             except requests.exceptions.ConnectionError:
                 self.log.warning('Connection error... will retry')
                 time.sleep(5)
+                retries += 1
+                if retries > 5:
+                    self.log.fatal('Too many connection errors')
+                    return 3
                 continue
             except aws.InvalidSaml:
                 self.log.error('AWS SAML response invalid. Retrying...')
@@ -285,13 +293,18 @@ class Keyman:
                 retries += 1
                 if retries > 2:
                     self.log.fatal('SAML failure. Please reauthenticate.')
-                    sys.exit(1)
+                    return 1
                 continue
+            except Exception as err:
+                # Unexpected exception
+                self.log.fatal("Unexpected error: {}".format(str(err)))
+                return 2
 
             # If we're not running in re-up mode, once we have the assertion
             # and creds, go ahead and quit.
             if not self.config.reup:
+                self.log.info('All done! 👍')
                 return
 
-            self.log.info('Reup enabled, sleeping...')
+            self.log.info('Reup enabled, sleeping... 💤')
             time.sleep(5)

@@ -59,6 +59,8 @@ def saml_assertion(roles):
 
 
 class TestSamlAssertion(unittest.TestCase):
+    _multiprocess_can_split_ = True
+
     def test_roles_are_extracted(self):
         assertion = saml_assertion(['{},{}'.format(dev_arn, idp_arn)])
 

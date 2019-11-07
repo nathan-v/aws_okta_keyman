@@ -27,11 +27,14 @@ import configparser
 import datetime
 import logging
 import os
+import re
 import xml
 from builtins import str
 from os.path import expanduser
 
 import boto3
+import bs4
+import requests
 
 from aws_okta_keyman.aws_saml import SamlAssertion
 
@@ -94,7 +97,7 @@ class Credentials(object):
              'aws_security_token': str(creds['SessionToken']),
              'aws_session_token': str(creds['SessionToken'])})
 
-        LOG.info('Wrote profile "{name}" to {file}'.format(
+        LOG.info('Wrote profile "{name}" to {file} 💾'.format(
             name=name, file=self.filename))
 
 
@@ -121,7 +124,7 @@ class Session(object):
         boto_logger.setLevel(logging.WARNING)
 
         if not os.path.exists(cred_dir):
-            LOG.info('Creating missing AWS Credentials dir {dir}'.format(
+            LOG.info('Creating missing AWS Credentials dir {dir} 📁'.format(
                 dir=cred_dir))
             os.makedirs(cred_dir)
 
@@ -140,6 +143,7 @@ class Session(object):
             'SessionToken': None,
             'Expiration': None}
         self.session_token = None
+        self.roles = None
         self.role = None
 
     @property
@@ -155,22 +159,31 @@ class Session(object):
                 self.creds['Expiration'],
                 datetime.datetime.utcnow()))
             LOG.debug(msg)
-            buffer = datetime.timedelta(seconds=600)
+            offset = datetime.timedelta(seconds=600)
             now = datetime.datetime.utcnow()
             expir = datetime.datetime.strptime(str(self.creds['Expiration']),
                                                '%Y-%m-%d %H:%M:%S+00:00')
 
-            return (now + buffer) < expir
+            return (now + offset) < expir
         except (ValueError, TypeError):
             return False
 
-    def set_role(self, role_index):
-        """Set the role based on the supplied index value."""
-        self.role = self.assertion.roles()[int(role_index)]
-
     def available_roles(self):
-        """Return the roles available from AWS."""
-        return self.assertion.roles()
+        """Return the roles available from AWS.
+
+        Returns: Tuple, dict of roles and a bool of if there was multiple
+        accounts found
+        """
+        self.roles = self.assertion.roles()
+        multiple_accounts = False
+        first_account = ''
+        for role in self.roles:
+            account = role['role'].split(':')[4]
+            if first_account == '':
+                first_account = account
+            elif first_account != account:
+                multiple_accounts = True
+        return self.roles, multiple_accounts
 
     def assume_role(self):
         """Use the SAML Assertion to actually get the credentials.
@@ -183,17 +196,17 @@ class Session(object):
             try:
                 if len(self.assertion.roles()) > 1:
                     raise MultipleRoles
-                self.role = self.assertion.roles()[0]
+                self.role = 0
             except xml.etree.ElementTree.ParseError:
                 LOG.error('Could not find any Role in the SAML assertion')
                 LOG.error(self.assertion.__dict__)
                 raise InvalidSaml()
 
-        LOG.info('Assuming role: {}'.format(self.role['role']))
+        LOG.info('Assuming role: {}'.format(self.roles[self.role]['role']))
 
         session = self.sts.assume_role_with_saml(
-            RoleArn=self.role['role'],
-            PrincipalArn=self.role['principle'],
+            RoleArn=self.roles[self.role]['role'],
+            PrincipalArn=self.roles[self.role]['principle'],
             SAMLAssertion=self.assertion.encode())
         self.creds = session['Credentials']
         self._write()
@@ -206,5 +219,60 @@ class Session(object):
             creds=self.creds)
         LOG.info('Current time is {time}'.format(
             time=datetime.datetime.utcnow()))
-        LOG.info('Session expires at {time}'.format(
+        LOG.info('Session expires at {time} ⏳'.format(
             time=self.creds['Expiration']))
+
+    def account_ids_to_names(self, roles):
+        """Turn account IDs into user-friendly names
+
+        args:
+            roles: Dict of the roles from AWS to get the account names for
+
+
+        Returns: Dict of account names and role names for user selection
+        """
+        try:
+            accounts = self.get_account_name_map()
+        except Exception:
+            msg = ('Error retreiving AWS account name/ID map. '
+                   'Falling back to just account IDs')
+            LOG.warning(msg)
+            return roles
+        new_roles = []
+        for role in roles:
+            new_roles.append(
+                {'role': '{} - {}'.format(
+                    accounts[role['role'].split(':')[4]],
+                    role['role'].split(':')[5])
+                 }
+                )
+        LOG.debug("AWS roles with friendly names: {}".format(accounts))
+        return new_roles
+
+    def get_account_name_map(self):
+        """ Get the friendly to ID mappings from AWS via hacktastic HTML
+
+        Returns: Dict of account numbers with names
+        """
+        url = 'https://signin.aws.amazon.com/saml'
+        headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+        data = {'SAMLResponse': self.assertion.encode()}
+        resp = requests.post(url=url, headers=headers, data=data)
+        LOG.debug("AWS SAML web response: {}".format(resp.text))
+        resp.raise_for_status()
+        return self.account_names_from_html(resp.text)
+
+    def account_names_from_html(self, html):
+        """ Parse the AWS SAML login page HTML for account numbers and names
+
+        Returns: Dict of the account numbers and names
+        """
+        accounts = {}
+        soup = bs4.BeautifulSoup(html, 'html.parser')
+        for account in soup.find_all('div', {'class': 'saml-account-name'}):
+            name_string = account.text
+            a_id = re.match(r".*\((\d+)\)", name_string).group(1)
+            a_name = re.match(r"\S+\s(\S+)", name_string).group(1)
+            accounts[a_id] = a_name
+        LOG.debug("AWS account map: {}".format(accounts))
+        return accounts

@@ -130,7 +130,7 @@ class Duo:
         else:
             raise Exception("Requested Duo factor not supported")
         auth = self.get_status(transaction_id, sid)
-        self.okta_callback(auth)
+        return auth
 
     def do_auth(self, sid, certs_url):
         """Handle initial auth with Duo
@@ -178,6 +178,7 @@ class Duo:
         Args:
             sid: String Duo session ID
             factor: String to tell Duo which factor to use
+            passcode: OTP passcode string
 
         Returns:
             String Duo transaction ID
@@ -274,22 +275,3 @@ class Duo:
 
         if 'cookie' in result['response']:
             return result['response']['cookie']
-
-    def okta_callback(self, auth):
-        """Do callback to Okta with the info from Duo
-
-        Args:
-            auth: String authorization from Duo to send in the Okta callback
-        """
-        app = self.details['signature'].split(":")[1]
-        response_sig = "{}:{}".format(auth, app)
-        callback_params = "stateToken={}&sig_response={}".format(
-            self.token, response_sig)
-
-        url = "{}?{}".format(
-            self.details['_links']['complete']['href'],
-            callback_params)
-        ret = self.session.post(url)
-        if ret.status_code != 200:
-            raise Exception("Bad status from Okta callback {}".format(
-                ret.status_code))

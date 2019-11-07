@@ -12,12 +12,50 @@ else:
     from unittest import mock
 
 
+AWS_HTML_MULTIACCOUNT_LOGIN = (
+    '<!DOCTYPE html><html><head><title>Amazon Web Services Sign-In</title>'
+    '</head><body><div id="container"><h1 class="background">'
+    'Amazon Web Services Login</h1><div id="content"><form id="saml_form" '
+    'name="saml_form" action="/saml" method="post"><input type="hidden" '
+    'name="RelayState" value="" /><input type="hidden" name="name" value="" />'
+    '<input type="hidden" name="portal" value="" /><fieldset><div class'
+    '="saml-account"><div onClick="expandCollapse(0);"><img id="image0" src='
+    '"/static/image/down.png" valign="middle"></img><div class="'
+    'saml-account-name">Account: my-dev (123456)</div></div></div><hr style="'
+    'border: 1px solid #ddd;"><div id="0" class="saml-account" ><div class="'
+    'saml-role" onClick="checkRadio(this);"><input type="radio" name="'
+    'roleIndex" value="arn:aws:iam::123456:role/admin" class="saml-radio" id="'
+    'arn:aws:iam::123456:role/admin" /><label for="arn:aws:iam::123456:role/'
+    'admin" class="saml-role-description">admin</label><span style="clear: '
+    'both;"></span></div></div><div class="saml-account"><div onClick="'
+    'expandCollapse(1);"><img id="image1" src="/static/image/down.png" '
+    'valign="middle"></img><div class="saml-account-name">Account: my-prod '
+    '(123457)</div></div></div><hr style="border: 1px solid #ddd;"><div id="1"'
+    ' class="saml-account" ><div class="saml-role" onClick="checkRadio(this);"'
+    '><input type="radio" name="roleIndex" value="arn:aws:iam::123457:role/'
+    'admin" class="saml-radio" id="arn:aws:iam::123457:role/admin" /><label '
+    'for="arn:aws:iam::123457:role/admin" class="saml-role-description">admin'
+    '</label><span style="clear: both;"></span></div></div></fieldset></form>'
+    '</div></div></body></html>')
+
+
+class MockResponse:
+    def __init__(self, text, exception=False):
+        self.text = text
+        self.exception = exception
+
+    def raise_for_status(self):
+        if self.exception:
+            raise Exception()
+
+
 class TestCredentials(unittest.TestCase):
+    _multiprocess_can_split_ = True
 
     @mock.patch('aws_okta_keyman.aws.os.chmod')
-    @mock.patch('configparser.ConfigParser')
     @mock.patch('aws_okta_keyman.aws.open')
-    def test_add_profile(self, open_mock, parser_mock, chmod_mock):
+    @mock.patch('configparser.ConfigParser')
+    def test_add_profile(self, parser_mock, _open_mock, _chmod_mock):
         fake_parser = mock.MagicMock(name='config_parser')
         parser_mock.return_value = fake_parser
 
@@ -150,6 +188,7 @@ class TestSession(unittest.TestCase):
         assertion = mock.Mock()
         assertion.roles.return_value = [{'role': '', 'principle': ''}]
         session = aws.Session('BogusAssertion')
+        session.roles = [{'role': '', 'principle': ''}]
         session.assertion = assertion
         sts = {'Credentials':
                {'AccessKeyId':     'AKI',
@@ -159,6 +198,7 @@ class TestSession(unittest.TestCase):
                 }}
         session.sts = mock.Mock()
         session.sts.assume_role_with_saml.return_value = sts
+
         ret = session.assume_role()
 
         self.assertEqual(None, ret)
@@ -166,7 +206,6 @@ class TestSession(unittest.TestCase):
         self.assertEqual('squirrel', session.creds['SecretAccessKey'])
         self.assertEqual('token', session.creds['SessionToken'])
         self.assertEqual('never', session.creds['Expiration'])
-
         # Verify _write is called correctly
         mock_write.assert_has_calls([
             mock.call()
@@ -198,20 +237,80 @@ class TestSession(unittest.TestCase):
         with self.assertRaises(aws.InvalidSaml):
             session.assume_role()
 
-    def test_set_role(self):
-        assertion = mock.Mock()
-        assertion.roles.return_value = [{'role': '', 'principle': ''}]
-        session = aws.Session('BogusAssertion')
-        session.assertion = assertion
-        session.set_role('0')
-        self.assertEqual('', session.role['role'])
-
     def test_available_roles(self):
         assertion = mock.Mock()
-        roles = [{'role': '1', 'principle': ''},
-                 {'role': '2', 'principle': ''}]
+        roles = [{'role': '::::1:', 'principle': ''},
+                 {'role': '::::1:', 'principle': ''}]
         assertion.roles.return_value = roles
         session = aws.Session('BogusAssertion')
         session.assertion = assertion
+
         result = session.available_roles()
-        self.assertEqual(roles, result)
+
+        self.assertEqual((roles, False), result)
+
+    def test_available_roles_multiple_accounts(self):
+        assertion = mock.Mock()
+        roles = [{'role': '::::1:', 'principle': ''},
+                 {'role': '::::2:', 'principle': ''}]
+        assertion.roles.return_value = roles
+        session = aws.Session('BogusAssertion')
+        session.assertion = assertion
+
+        result = session.available_roles()
+
+        self.assertEqual((roles, True), result)
+
+    def test_account_ids_to_names_map(self):
+        session = aws.Session('BogusAssertion')
+        session.get_account_name_map = mock.MagicMock()
+        account_map = {'1': 'One', '2': 'Two'}
+        session.get_account_name_map.return_value = account_map
+        roles = [{'role': '::::1:role'},
+                 {'role': '::::2:role'}]
+        ret = session.account_ids_to_names(roles)
+
+        self.assertEqual(ret, [{'role': 'One - role'}, {'role': 'Two - role'}])
+
+    def test_account_ids_to_names_call_failed(self):
+        session = aws.Session('BogusAssertion')
+        session.get_account_name_map = mock.MagicMock()
+        session.get_account_name_map.side_effect = Exception()
+        roles = [{'role': '::::1:role'},
+                 {'role': '::::2:role'}]
+        ret = session.account_ids_to_names(roles)
+
+        self.assertEqual(ret, [{'role': '::::1:role'}, {'role': '::::2:role'}])
+
+    def test_get_account_name_map(self):
+        def post(*args, **kwargs):
+            return MockResponse('html')
+
+        session = aws.Session('BogusAssertion')
+        session.assertion = mock.MagicMock()
+        session.assertion.encode.response_value = ''
+        session.account_names_from_html = mock.MagicMock()
+        session.account_names_from_html.return_value = {}
+
+        with mock.patch('aws_okta_keyman.aws.requests.post', side_effect=post):
+            ret = session.get_account_name_map()
+
+        self.assertEqual(ret, {})
+        session.account_names_from_html.assert_has_calls([mock.call('html')])
+
+    def test_get_account_name_map_error(self):
+        def post(*args, **kwargs):
+            return MockResponse('text', True)
+
+        session = aws.Session('BogusAssertion')
+        session.assertion = mock.MagicMock()
+        session.assertion.encode.response_value = ''
+
+        with mock.patch('aws_okta_keyman.aws.requests.post', side_effect=post):
+            with self.assertRaises(Exception):
+                session.get_account_name_map()
+
+    def test_account_names_from_html(self):
+        session = aws.Session('BogusAssertion')
+        ret = session.account_names_from_html(AWS_HTML_MULTIACCOUNT_LOGIN)
+        self.assertEqual(ret, {'123456': 'my-dev', '123457': 'my-prod'})

@@ -43,10 +43,20 @@ class OktaSaml(okta.Okta):
                 assertion = inputtag.get('value')
         return base64.b64decode(assertion)
 
-    def get_assertion(self, appid, apptype):
+    def get_okta_error_from_response(self, resp):
+        """Parse the Okta error from the HTML response."""
+        err = ''
+        soup = bs4.BeautifulSoup(resp.text, 'html.parser')
+        for err_div in soup.find_all("div", {"class": "error-content"}):
+            err = err_div.select('h1')[0].text.strip()
+        if err == '':
+            err = 'Unknown error'
+        return err
+
+    def get_assertion(self, appid):
         """Call Okta and get the assertion."""
-        path = '{url}/home/{apptype}/{appid}'.format(
-            url=self.base_url, apptype=apptype, appid=appid)
+        path = '{url}/home/amazon_aws/{appid}'.format(
+            url=self.base_url, appid=appid)
         resp = self.session.get(path,
                                 cookies={'sid': self.session_token})
         LOG.debug(resp.__dict__)
@@ -62,4 +72,9 @@ class OktaSaml(okta.Okta):
                     msg=str(err.response.__dict__)))
             raise okta.UnknownError()
 
-        return self.assertion(resp.text)
+        assertion = self.assertion(resp.text)
+        if assertion == b'':
+            err = self.get_okta_error_from_response(resp)
+            LOG.fatal(err)
+            raise okta.UnknownError()
+        return assertion
