@@ -50,6 +50,8 @@ class MockResponse:
 
 
 class TestDuo(unittest.TestCase):
+    _multiprocess_can_split_ = True
+
     def setup_for_trigger_duo(self, factor):
         self.duo_test = duo.Duo(DETAILS, 'token', factor)
         self.duo_test.do_auth = mock.MagicMock()
@@ -58,7 +60,6 @@ class TestDuo(unittest.TestCase):
         self.duo_test.get_txid.return_value = 'txid'
         self.duo_test.get_status = mock.MagicMock()
         self.duo_test.get_status.return_value = 'auth'
-        self.duo_test.okta_callback = mock.MagicMock()
 
     def test_init_missing_args(self):
         with self.assertRaises(TypeError):
@@ -123,7 +124,6 @@ class TestDuo(unittest.TestCase):
         self.duo_test.get_txid.assert_has_calls(
             [mock.call('sid', 'Passcode', '123456')])
         self.duo_test.get_status.assert_has_calls([mock.call('txid', 'sid')])
-        self.duo_test.okta_callback.assert_has_calls([mock.call('auth')])
 
     def test_trigger_duo_call_success(self):
         self.setup_for_trigger_duo('call')
@@ -131,7 +131,6 @@ class TestDuo(unittest.TestCase):
         self.duo_test.get_txid.assert_has_calls(
             [mock.call('sid', 'Phone+Call')])
         self.duo_test.get_status.assert_has_calls([mock.call('txid', 'sid')])
-        self.duo_test.okta_callback.assert_has_calls([mock.call('auth')])
 
     def test_trigger_duo_push_success(self):
         self.setup_for_trigger_duo('push')
@@ -139,7 +138,6 @@ class TestDuo(unittest.TestCase):
         self.duo_test.get_txid.assert_has_calls(
             [mock.call('sid', 'Duo+Push')])
         self.duo_test.get_status.assert_has_calls([mock.call('txid', 'sid')])
-        self.duo_test.okta_callback.assert_has_calls([mock.call('auth')])
 
     def test_do_auth_302_success(self):
         duo_test = duo.Duo(DETAILS, 'token')
@@ -303,31 +301,6 @@ class TestDuo(unittest.TestCase):
 
         with self.assertRaises(Exception):
             duo_test.do_redirect('url', 'sid')
-
-    def test_okta_callback_success(self):
-        duo_test = duo.Duo(DETAILS, 'token')
-        duo_test.session = mock.MagicMock()
-        json_ok = {'response': {'cookie': 'yum'}, 'stat': 'OK'}
-        headers = {'Location': 'https://someurl/foo?sid=somesid'}
-        duo_test.session.post.return_value = MockResponse(
-            headers, 200, json_ok)
-        duo_test.okta_callback('auth')
-
-        duo_test.session.assert_has_calls([
-            mock.call.post(
-                ('http://example.com/callback?stateToken=token&'
-                 'sig_response=auth:differentsig'))])
-
-    def test_okta_callback_failure(self):
-        duo_test = duo.Duo(DETAILS, 'token')
-        duo_test.session = mock.MagicMock()
-        json_ok = {'response': {'cookie': 'yum'}, 'stat': 'OK'}
-        headers = {'Location': 'https://someurl/foo?sid=somesid'}
-        duo_test.session.post.return_value = MockResponse(
-            headers, 500, json_ok)
-
-        with self.assertRaises(Exception):
-            duo_test.okta_callback('auth')
 
 
 class TestQuietHandler(unittest.TestCase):

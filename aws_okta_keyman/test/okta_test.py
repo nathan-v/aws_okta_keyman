@@ -201,7 +201,14 @@ MFA_TIMEOUT_RESPONSE = {
 }
 
 
+class MockResponse:
+    def __init__(self, headers, status_code):
+        self.headers = headers
+        self.status_code = status_code
+
+
 class OktaTest(unittest.TestCase):
+    _multiprocess_can_split_ = True
 
     def test_init_blank_inputs(self):
         with self.assertRaises(okta.EmptyInput):
@@ -418,7 +425,7 @@ class OktaTest(unittest.TestCase):
 
     @mock.patch('time.sleep', return_value=None)
     @mock.patch('aws_okta_keyman.okta.duo.Duo')
-    def test_duo_auth_missing_factor(self, duo_mock, _sleep_mock):
+    def test_duo_auth_missing_factor(self, _duo_mock, _sleep_mock):
         client = okta.Okta('organization', 'username', 'password')
         client._request = mock.MagicMock(name='_request')
         client._request.return_value = MFA_WAITING_RESPONSE
@@ -430,7 +437,7 @@ class OktaTest(unittest.TestCase):
 
     @mock.patch('time.sleep', return_value=None)
     @mock.patch('aws_okta_keyman.okta.duo.Duo')
-    def test_duo_auth_missing_passcode(self, duo_mock, _sleep_mock):
+    def test_duo_auth_missing_passcode(self, _duo_mock, _sleep_mock):
         client = okta.Okta('organization', 'username', 'password')
         client._request = mock.MagicMock(name='_request')
         client._request.return_value = MFA_WAITING_RESPONSE
@@ -443,10 +450,13 @@ class OktaTest(unittest.TestCase):
     @mock.patch('time.sleep', return_value=None)
     @mock.patch('aws_okta_keyman.okta.duo.Duo')
     def test_duo_auth_successful_push(self, duo_mock, _sleep_mock):
+        duo_instance = duo_mock.return_value
+        duo_instance.trigger_duo.return_value = True
         client = okta.Okta('organization', 'username', 'password')
         client._request = mock.MagicMock(name='_request')
         client._request.return_value = MFA_WAITING_RESPONSE
         client.mfa_wait_loop = mock.MagicMock(name='mfa_wait_loop')
+        client.mfa_callback = mock.MagicMock()
         client.set_token = mock.MagicMock()
         client.duo_factor = "push"
 
@@ -455,20 +465,24 @@ class OktaTest(unittest.TestCase):
         client.mfa_wait_loop.assert_called_with(MFA_WAITING_RESPONSE,
                                                 {'fid': '123',
                                                  'stateToken': 'token'})
+        client.mfa_callback.assert_called_with(True, {}, 'token')
 
     @mock.patch('time.sleep', return_value=None)
     @mock.patch('aws_okta_keyman.duo.Duo')
     def test_duo_auth_successful_passcode(self, duo_mock, _sleep_mock):
         client = okta.Okta('organization', 'username', 'password')
         duo_instance = duo_mock.return_value
+        duo_instance.trigger_duo.return_value = True
         client._request = mock.MagicMock(name='_request')
         client._request.return_value = MFA_WAITING_RESPONSE
         client.mfa_wait_loop = mock.MagicMock(name='mfa_wait_loop')
+        client.mfa_callback = mock.MagicMock()
         client.set_token = mock.MagicMock()
         client.duo_factor = "passcode"
 
         client.duo_auth('123', 'token', '000000')
         duo_instance.trigger_duo.assert_called_with(passcode='000000')
+        client.mfa_callback.assert_called_with(True, {}, 'token')
 
     @mock.patch('time.sleep', return_value=None)
     @mock.patch('webbrowser.open_new')
@@ -488,15 +502,17 @@ class OktaTest(unittest.TestCase):
         self.assertEqual(ret, None)
         web_mock.assert_has_calls([
             mock.call(u'http://127.0.0.1:65432/duo.html')])
+        assert not duo_mock.trigger_duo.called
 
     @mock.patch('time.sleep', return_value=None)
     @mock.patch('aws_okta_keyman.okta.duo.Duo')
-    def test_duo_auth_failure(self, duo_mock, _sleep_mock):
+    def test_duo_auth_failure(self, _duo_mock, _sleep_mock):
         client = okta.Okta('organization', 'username', 'password')
         client._request = mock.MagicMock(name='_request')
         client._request.return_value = MFA_WAITING_RESPONSE
         client.mfa_wait_loop = mock.MagicMock(name='mfa_wait_loop')
         client.mfa_wait_loop.return_value = None
+        client.mfa_callback = mock.MagicMock()
         client.duo_factor = "push"
 
         ret = client.duo_auth('123', 'token')
@@ -685,8 +701,8 @@ class OktaTest(unittest.TestCase):
         ]
         data = {'fid': '123', 'stateToken': 'token'}
 
-        ret = client.mfa_wait_loop(MFA_WAITING_RESPONSE, data, sleep=0)
-        self.assertEqual(ret, None)
+        with self.assertRaises(KeyboardInterrupt):
+            client.mfa_wait_loop(MFA_WAITING_RESPONSE, data, sleep=0)
 
     def test_mfa_wait_loop_user_cancel(self):
         client = okta.Okta('organization', 'username', 'password')
@@ -782,6 +798,33 @@ class OktaTest(unittest.TestCase):
         ret = client.get_aws_apps()
         assert {'name': 'label1', 'appid': '1'} in ret
         assert {'name': 'label2', 'appid': '2'} in ret
+
+    def test_mfa_callback_success(self):
+        client = okta.Okta('organization', 'username', 'password')
+        client.session = mock.MagicMock()
+        headers = {'Location': 'https://someurl/foo?sid=somesid'}
+        client.session.post.return_value = MockResponse(
+            headers, 200)
+        verification = {'signature': 'somesig:differentsig', '_links': {
+                        'complete': {'href': 'http://example.com/callback'}}}
+        client.mfa_callback('auth', verification, 'token')
+
+        client.session.assert_has_calls([
+            mock.call.post(
+                ('http://example.com/callback?stateToken=token&'
+                 'sig_response=auth:differentsig'))])
+
+    def test_mfa_callback_failure(self):
+        client = okta.Okta('organization', 'username', 'password')
+        client.session = mock.MagicMock()
+        headers = {'Location': 'https://someurl/foo?sid=somesid'}
+        client.session.post.return_value = MockResponse(
+            headers, 500)
+        verification = {'signature': 'somesig:differentsig', '_links': {
+                        'complete': {'href': 'http://example.com/callback'}}}
+
+        with self.assertRaises(Exception):
+            client.mfa_callback('auth', verification, 'token')
 
 
 class PasscodeRequiredTest(unittest.TestCase):

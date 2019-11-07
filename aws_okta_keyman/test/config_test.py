@@ -15,6 +15,7 @@ else:
 
 
 class ConfigTest(unittest.TestCase):
+    _multiprocess_can_split_ = True
 
     @mock.patch('aws_okta_keyman.config.sys.exit')
     @mock.patch('aws_okta_keyman.config.Config.interactive_config')
@@ -127,14 +128,14 @@ class ConfigTest(unittest.TestCase):
             mock.call('/.config/aws_okta_keyman.yml'),
         ])
 
+    @mock.patch('aws_okta_keyman.config.Config.parse_args')
     @mock.patch('aws_okta_keyman.config.os.path.expanduser')
     @mock.patch('aws_okta_keyman.config.Config.parse_config')
     @mock.patch('aws_okta_keyman.config.Config.validate')
-    @mock.patch('aws_okta_keyman.config.Config.parse_args')
     @mock.patch('aws_okta_keyman.config.os.path.isfile')
-    def test_get_config_specified_config_only(self, isfile_mock, parse_mock,
-                                              valid_mock, config_mock,
-                                              expuser_mock):
+    def test_get_config_specified_config_only(self, isfile_mock, valid_mock,
+                                              config_mock, expuser_mock,
+                                              _parse_mock):
         isfile_mock.return_value = True
         valid_mock.return_value = None
         config_mock.return_value = None
@@ -181,6 +182,7 @@ class ConfigTest(unittest.TestCase):
         # Should succeed without throwing due to missing args
         self.assertEqual(config.debug, True)
 
+    @mock.patch('argparse.ArgumentParser._print_message', mock.MagicMock())
     def test_parse_args_req_main_missing(self):
         argv = [
             'aws_okta_keyman.py',

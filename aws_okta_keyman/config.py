@@ -316,6 +316,6 @@ class Config:
             self.write_config()
             print('')
             LOG.info('Config file written. Please rerun Keyman')
-        except(KeyboardInterrupt):
+        except KeyboardInterrupt:
             print('')
             LOG.warning('User cancelled configuration; exiting')

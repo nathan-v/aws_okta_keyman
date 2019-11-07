@@ -97,8 +97,8 @@ class Okta(object):
         LOG.debug('Base URL Set to: {url}'.format(url=self.base_url))
 
         # Validate the inputs are reasonably sane
-        for input in (organization, username, password):
-            if input == '' or input is None:
+        for input_value in (organization, username, password):
+            if input_value == '' or input_value is None:
                 raise EmptyInput()
 
         self.username = username
@@ -106,6 +106,7 @@ class Okta(object):
         self.duo_factor = duo_factor
         self.session = requests.Session()
         self.session_token = None
+        self.long_token = True
 
     def _request(self, path, data=None):
         """Make Okta API calls.
@@ -153,6 +154,8 @@ class Okta(object):
         last_name = ret['_embedded']['user']['profile']['lastName']
         LOG.info('Successfully authed {first_name} {last_name}'.format(
             first_name=first_name, last_name=last_name))
+
+        LOG.debug('Long-lived token needed; requesting Okta API token')
         resp = self._request('/sessions',
                              {'sessionToken': ret['sessionToken']})
         self.session_token = resp['id']
@@ -291,6 +294,7 @@ class Okta(object):
         Args:
             fid: Okta Factor ID used to trigger the push
             state_token: State Token allowing us to trigger the push
+            passcode: OTP passcode string
 
         Returns:
             Dict (JSON) of API response for the MFA status if successful
@@ -309,6 +313,7 @@ class Okta(object):
         ret = self._request(path, data)
         verification = ret['_embedded']['factor']['_embedded']['verification']
 
+        auth = None
         duo_client = duo.Duo(verification, state_token, self.duo_factor)
         if self.duo_factor == "web":
             # Duo Web via local browser
@@ -317,19 +322,21 @@ class Okta(object):
             proc.start()
             time.sleep(2)
             webbrowser.open_new('http://127.0.0.1:65432/duo.html')
-        if self.duo_factor == "passcode":
+        elif self.duo_factor == "passcode":
             # Duo auth with OTP code without a browser
             LOG.warning('Duo required; using OTP...')
-            duo_client.trigger_duo(passcode=passcode)
+            auth = duo_client.trigger_duo(passcode=passcode)
         else:
             # Duo Auth without the browser
-            LOG.warning('Duo required; check your phone...')
-            duo_client.trigger_duo()
+            LOG.warning('Duo required; check your phone... 📱')
+            auth = duo_client.trigger_duo()
 
-        ret = self.mfa_wait_loop(ret, data)
-        if ret:
-            self.set_token(ret)
-            return True
+        if auth is not None:
+            self.mfa_callback(auth, verification, state_token)
+            ret = self.mfa_wait_loop(ret, data)
+            if ret:
+                self.set_token(ret)
+                return True
         return None
 
     def mfa_wait_loop(self, ret, data, sleep=1):
@@ -362,7 +369,7 @@ class Okta(object):
             return ret
         except KeyboardInterrupt:
             LOG.info('User canceled waiting for MFA success.')
-            return None
+            raise
 
     def auth(self):
         """Perform an initial authentication against Okta.
@@ -542,3 +549,24 @@ class Okta(object):
             appid = v.split("/", 5)[5]
             accounts.append({'name': k, 'appid': appid})
         return accounts
+
+    def mfa_callback(self, auth, verification, state_token):
+        """Do callback to Okta with the info from the MFA provider
+
+        Args:
+            auth: String auth from MFA provider to send in the callback
+            verification: Dict of details used in Okta API calls
+            state_token: String Okta state token
+        """
+        app = verification['signature'].split(":")[1]
+        response_sig = "{}:{}".format(auth, app)
+        callback_params = "stateToken={}&sig_response={}".format(
+            state_token, response_sig)
+
+        url = "{}?{}".format(
+            verification['_links']['complete']['href'],
+            callback_params)
+        ret = self.session.post(url)
+        if ret.status_code != 200:
+            raise Exception("Bad status from Okta callback {}".format(
+                ret.status_code))

@@ -1,3 +1,4 @@
+# -*- coding: UTF-8 -*-
 from __future__ import unicode_literals
 
 import logging
@@ -7,6 +8,8 @@ import unittest
 from aws_okta_keyman import aws, okta, duo
 from aws_okta_keyman.keyman import Keyman
 
+import requests
+
 if sys.version_info[0] < 3:  # Python 2
     import mock
 else:
@@ -14,29 +17,35 @@ else:
 
 
 class KeymanTest(unittest.TestCase):
+    _multiprocess_can_split_ = True
 
     def test_setup_logging(self):
         # Simple execution test - make sure that the logger code executes and
         # returns a root logger. No mocks used here, want to ensure that the
         # options passed to the logger are valid.
         ret = Keyman.setup_logging()
+
         self.assertEqual(type(ret), type(logging.getLogger()))
 
     @mock.patch('aws_okta_keyman.keyman.Config')
     def test_init_blank_args(self, _config_mock):
         keyman = Keyman([''])
+
         assert isinstance(keyman, Keyman)
 
     @mock.patch('aws_okta_keyman.keyman.Config')
     def test_init_use_debug(self, config_mock):
         config_mock().debug = True
         keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz', '-D'])
+
         log_level = logging.getLevelName(keyman.log.getEffectiveLevel())
+
         self.assertEqual('DEBUG', log_level)
 
     @mock.patch('aws_okta_keyman.keyman.Config')
     def test_init_bad_config(self, config_mock):
         config_mock().get_config.side_effect = ValueError
+
         with self.assertRaises(SystemExit):
             Keyman([])
 
@@ -49,6 +58,7 @@ class KeymanTest(unittest.TestCase):
         keyman.init_okta = mock.MagicMock()
         keyman.auth_okta = mock.MagicMock()
         keyman.aws_auth_loop = mock.MagicMock()
+        keyman.aws_auth_loop.return_value = None
 
         keyman.main()
 
@@ -68,8 +78,11 @@ class KeymanTest(unittest.TestCase):
         keyman.init_okta = mock.MagicMock()
         keyman.auth_okta = mock.MagicMock()
         keyman.aws_auth_loop = mock.MagicMock()
+        keyman.aws_auth_loop.return_value = None
         keyman.handle_appid_selection = mock.MagicMock()
+
         keyman.main()
+
         keyman.handle_appid_selection.assert_has_calls([
             mock.call(),
             mock.call(okta_ready=True)
@@ -85,14 +98,40 @@ class KeymanTest(unittest.TestCase):
         with self.assertRaises(SystemExit):
             keyman.main()
 
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_main_unhandled_exception(self, _config_mock):
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
+        keyman.handle_appid_selection = mock.MagicMock()
+        keyman.user_password = mock.MagicMock()
+        keyman.user_password.side_effect = Exception()
+
+        with self.assertRaises(SystemExit):
+            keyman.main()
+
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_main_aws_auth_error(self, _config_mock):
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
+        keyman.handle_appid_selection = mock.MagicMock()
+        keyman.user_password = mock.MagicMock()
+        keyman.user_password.return_value = 'foo'
+        keyman.init_okta = mock.MagicMock()
+        keyman.auth_okta = mock.MagicMock()
+        keyman.aws_auth_loop = mock.MagicMock()
+        keyman.aws_auth_loop.return_value = 1
+
+        with self.assertRaises(SystemExit):
+            keyman.main()
+
     @mock.patch('aws_okta_keyman.keyman.input')
     def test_user_input(self, input_mock):
         input_mock.return_value = 'test'
+
         self.assertEqual('test', Keyman.user_input('input test'))
 
     @mock.patch('aws_okta_keyman.keyman.getpass')
     def test_user_password(self, pass_mock):
         pass_mock.getpass.return_value = 'test'
+
         self.assertEqual('test', Keyman.user_password())
 
     @mock.patch('aws_okta_keyman.keyman.Config')
@@ -104,7 +143,9 @@ class KeymanTest(unittest.TestCase):
         keyman.user_input.return_value = 0
         stuff = [{'artist': 'Metallica'},
                  {'artist': 'Soundgarden'}]
+
         ret = keyman.selector_menu(stuff, 'artist', 'Artist')
+
         self.assertEqual(ret, 0)
         stdout_mock.assert_has_calls([
             mock.call.write('[0] Artist: Metallica'),
@@ -122,7 +163,9 @@ class KeymanTest(unittest.TestCase):
         keyman.user_input.side_effect = [99, 98, 0]
         stuff = [{'artist': 'Metallica'},
                  {'artist': 'Soundgarden'}]
+
         ret = keyman.selector_menu(stuff, 'artist', 'Artist')
+
         self.assertEqual(ret, 0)
         keyman.user_input.assert_has_calls([
             mock.call('Artist selection: '),
@@ -139,7 +182,9 @@ class KeymanTest(unittest.TestCase):
         keyman.user_input.side_effect = ['invalid', '', 0]
         stuff = [{'artist': 'Metallica'},
                  {'artist': 'Soundgarden'}]
+
         ret = keyman.selector_menu(stuff, 'artist', 'Artist')
+
         self.assertEqual(ret, 0)
         keyman.user_input.assert_has_calls([
             mock.call('Artist selection: '),
@@ -193,6 +238,7 @@ class KeymanTest(unittest.TestCase):
         keyman.config.set_appid_from_account_id = mock.MagicMock()
 
         ret = keyman.handle_appid_selection()
+
         self.assertEqual(ret, None)
 
     @mock.patch('aws_okta_keyman.keyman.Config')
@@ -225,9 +271,9 @@ class KeymanTest(unittest.TestCase):
 
         keyman.selector_menu.assert_has_calls([
             mock.call(
-                [{'name': 'Duo Push', 'factor': 'push'},
-                 {'name': 'OTP Passcode', 'factor': 'passcode'},
-                 {'name': 'Phone call', 'factor': 'call'}],
+                [{'name': '📲 Duo Push', 'factor': 'push'},
+                 {'name': '📟 OTP Passcode', 'factor': 'passcode'},
+                 {'name': '📞 Phone call', 'factor': 'call'}],
                 'name', 'Factor')
         ])
         self.assertEqual(ret, 'push')
@@ -236,6 +282,7 @@ class KeymanTest(unittest.TestCase):
     def test_handle_appid_selection_when_appid_provided(self, config_mock):
         keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
         config_mock().appid = 'someid'
+
         self.assertEqual(keyman.handle_appid_selection(), None)
 
     @mock.patch('aws_okta_keyman.keyman.Config')
@@ -255,6 +302,7 @@ class KeymanTest(unittest.TestCase):
         okta_mock.OktaSaml = mock.MagicMock()
         keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
         keyman.config.oktapreview = True
+
         keyman.init_okta('troz')
 
         okta_mock.OktaSaml.assert_has_calls([
@@ -267,7 +315,9 @@ class KeymanTest(unittest.TestCase):
         okta_mock.EmptyInput = BaseException
         okta_mock.OktaSaml = mock.MagicMock()
         okta_mock.OktaSaml.side_effect = okta.EmptyInput
+
         keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
+
         with self.assertRaises(SystemExit):
             keyman.init_okta('troz')
 
@@ -277,6 +327,7 @@ class KeymanTest(unittest.TestCase):
         okta_mock.OktaSaml = mock.MagicMock()
         keyman = Keyman(
             ['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz', '-d', 'push'])
+
         keyman.init_okta('troz')
 
         okta_mock.OktaSaml.assert_has_calls([
@@ -378,6 +429,7 @@ class KeymanTest(unittest.TestCase):
         keyman.user_input = mock.MagicMock()
 
         keyman.auth_okta()
+
         keyman.handle_duo_factor_selection.assert_has_calls([mock.call()])
 
     @mock.patch('aws_okta_keyman.keyman.Config')
@@ -425,22 +477,31 @@ class KeymanTest(unittest.TestCase):
         keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
         keyman.selector_menu = mock.MagicMock()
         keyman.selector_menu.return_value = 0
-        roles = [{}, {}]
+        roles = ([{}, {}], False)
         mock_session = mock.MagicMock()
         mock_session.available_roles.return_value = roles
 
-        ret = keyman.handle_multiple_roles(mock_session)
-
-        self.assertEqual(ret, 0)
+        keyman.handle_multiple_roles(mock_session)
 
         keyman.selector_menu.assert_has_calls([
             mock.call([{}, {}], 'role', 'Role')
         ])
         mock_session.assert_has_calls([
-            mock.call.available_roles(),
-            mock.call.set_role(mock.ANY),
-            mock.call.assume_role()
+            mock.call.available_roles()
         ])
+
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_handle_multiple_roles_and_accounts(self, _config_mock):
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
+        keyman.selector_menu = mock.MagicMock()
+        keyman.selector_menu.return_value = 0
+        roles = ([{}, {}], True)
+        mock_session = mock.MagicMock()
+        mock_session.available_roles.return_value = roles
+
+        keyman.handle_multiple_roles(mock_session)
+
+        mock_session.account_ids_to_names.assert_called_with([{}, {}])
 
     @mock.patch('aws_okta_keyman.keyman.Config')
     @mock.patch('aws_okta_keyman.keyman.aws')
@@ -453,7 +514,7 @@ class KeymanTest(unittest.TestCase):
         keyman.start_session()
 
         keyman.okta_client.assert_has_calls([
-            mock.call.get_assertion(appid=mock.ANY, apptype='amazon_aws')
+            mock.call.get_assertion(appid=mock.ANY)
         ])
         aws_mock.assert_has_calls([
             mock.call.Session('assertion', profile=mock.ANY)
@@ -481,16 +542,60 @@ class KeymanTest(unittest.TestCase):
             mock.call().assume_role()
         ])
 
+    @mock.patch('time.sleep', return_value=None)
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_aws_auth_loop_connectionerror(self, config_mock, _sleep_mock):
+        config_mock().reup = False
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
+        keyman.start_session = mock.MagicMock()
+        err = requests.exceptions.ConnectionError()
+        keyman.start_session.side_effect = err
+
+        ret = keyman.aws_auth_loop()
+
+        assert keyman.start_session.called
+        self.assertEqual(ret, 3)
+
     @mock.patch('aws_okta_keyman.keyman.Config')
     def test_aws_auth_loop_multirole(self, config_mock):
         config_mock().reup = False
         keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
+        session_instance = mock.MagicMock()
+        session_instance.assume_role.side_effect = [aws.MultipleRoles]
         keyman.start_session = mock.MagicMock()
-        keyman.start_session().assume_role.side_effect = aws.MultipleRoles
+        keyman.start_session.return_value = session_instance
         keyman.handle_multiple_roles = mock.MagicMock()
+        keyman.handle_multiple_roles.side_effect = Exception()
 
-        keyman.aws_auth_loop()
+        with self.assertRaises(Exception):
+            keyman.aws_auth_loop()
 
         keyman.handle_multiple_roles.assert_has_calls([
             mock.call(mock.ANY)
         ])
+
+    @mock.patch('time.sleep', return_value=None)
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_aws_auth_loop_invalidsaml(self, config_mock, _sleep_mock):
+        config_mock().reup = False
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
+        keyman.start_session = mock.MagicMock()
+        keyman.start_session.side_effect = aws.InvalidSaml()
+
+        ret = keyman.aws_auth_loop()
+
+        assert keyman.start_session.called
+        self.assertEqual(ret, 1)
+
+    @mock.patch('time.sleep', return_value=None)
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_aws_auth_loop_exception(self, config_mock, _sleep_mock):
+        config_mock().reup = False
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
+        keyman.start_session = mock.MagicMock()
+        keyman.start_session.side_effect = Exception()
+
+        ret = keyman.aws_auth_loop()
+
+        assert keyman.start_session.called
+        self.assertEqual(ret, 2)
