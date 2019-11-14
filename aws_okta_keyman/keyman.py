@@ -22,6 +22,8 @@ import getpass
 import logging
 import sys
 import time
+import traceback
+import xml
 from builtins import input
 
 import rainbow_logging_handler
@@ -41,6 +43,7 @@ class Keyman:
         self.log = self.setup_logging()
         self.log.info('{} 🔐 v{}'.format(__desc__, __version__))
         self.config = Config(argv)
+        self.role = None
         try:
             self.config.get_config()
         except ValueError as err:
@@ -84,6 +87,7 @@ class Keyman:
         except Exception as err:
             msg = '😬 Unhandled exception: {}'.format(err)
             self.log.fatal(msg)
+            self.log.debug(traceback.format_exc())
             sys.exit(5)
 
     @staticmethod
@@ -108,19 +112,87 @@ class Keyman:
         """Wrap getpass to simplify testing."""
         return getpass.getpass()
 
-    def selector_menu(self, options, key, key_name):
-        """Show a selection menu from a dict so the user can pick something."""
+    @staticmethod
+    def generate_template(data, header_map):
+        """ Generates a string template for printing a table using the data and
+        header to define the column names and widths
+
+        Args:
+        data: List of dicts; the data that will go in the table
+        header_map: List of dicts with the header name to key map
+
+        Returns: String template used for printing a padded table
+        """
+        widths = []
+        for col in header_map:
+            col_key = list(col.keys())[0]
+            values = [row[col_key] for row in data]
+            col_wid = max(len(value) + 2 for value in values)
+            if len(col[col_key]) + 2 > col_wid:
+                col_wid = len(col[col_key]) + 2
+            widths.append([col_key, col_wid])
+        template = ''
+        for col in widths:
+            if template == '':
+                template = "{}{}:{}{}".format('{', col[0], col[1], '}')
+            else:
+                template = "{}{}{}:{}{}".format(template,
+                                                '{', col[0], col[1], '}')
+        return template
+
+    @staticmethod
+    def generate_header(header_map):
+        """ Generates a table header
+
+        Args:
+        header_map: List of dicts with the header name to key map
+
+        Returns: Dict mapping data keys to column headers
+        """
+        header_dict = {}
+        for col in header_map:
+            header_dict.update(col)
+        return header_dict
+
+    @staticmethod
+    def print_selector_table(template, header_map, data):
+        """ Prints out a formatted table of data with headers and index
+        numbers so that the user can be prompted to select a row as their
+        response.
+
+        Args:
+        template: String template used to print each row
+        header_map: List of dicts containing the data key to column title map
+        data: List of dicts where each dict is a row in the table
+        """
+        selector_width = len(str(len(data) - 1)) + 2
+        pad = " " * (selector_width + 1)
+        header_dict = Keyman.generate_header(header_map)
+        print("\n{}{}".format(pad, template.format(**header_dict)))
+        for index, item in enumerate(data):
+            sel = "[{}]".format(index).ljust(selector_width)
+            print("{} {}".format(sel, str(template.format(**item))))
+
+    def selector_menu(self, data, header_map):
+        """ Presents a menu/table to the user from which they can make a
+        selection using the index number of their choice
+
+        Args:
+        data: List of dicts where each dict is a row in the table
+        header_map: List of dicts containing the data key to column title map
+
+        Returns: Int as the index value for the row the user chose
+        """
+        template = self.generate_template(data, header_map)
         selection = -1
-        while selection < 0 or selection > len(options):
-            for index, option in enumerate(options):
-                print("[{}] {}: {}".format(index, key_name, option[key]))
+        while selection < 0 or selection > len(data):
+            self.print_selector_table(template, header_map, data)
             try:
-                selection = int(self.user_input("{} selection: ".format(
-                    key_name
-                )))
+                selection = int(self.user_input("Selection: "))
             except ValueError:
-                self.log.warning('Invalid selection, trying again')
+                self.log.warning('Invalid selection, please try again')
                 continue
+        print('')
         return selection
 
     def handle_appid_selection(self, okta_ready=False):
@@ -128,7 +200,6 @@ class Keyman:
         file display the options to the user and select one
         """
         if self.config.appid is None:
-            accts = None
             if self.config.accounts:
                 accts = self.config.accounts
             elif okta_ready:
@@ -141,7 +212,8 @@ class Keyman:
             if len(accts) > 1:
                 msg = 'No app ID provided; select from available AWS accounts'
                 self.log.warning(msg)
-                acct_selection = self.selector_menu(accts, 'name', 'Account')
+                header = [{'name': 'Account'}]
+                acct_selection = self.selector_menu(accts, header)
             self.config.set_appid_from_account_id(acct_selection)
             msg = "Using account: {} / {}".format(
                 accts[acct_selection]["name"], accts[acct_selection]["appid"]
@@ -158,7 +230,8 @@ class Keyman:
         factors = [{'name': '📲 Duo Push', 'factor': 'push'},
                    {'name': '📟 OTP Passcode', 'factor': 'passcode'},
                    {'name': '📞 Phone call', 'factor': 'call'}]
-        duo_factor_index = self.selector_menu(factors, 'name', 'Factor')
+        header = [{'name': 'Duo Factor'}]
+        duo_factor_index = self.selector_menu(factors, header)
         msg = "Using factor: {}".format(factors[duo_factor_index]["name"])
         self.log.info(msg)
         return factors[duo_factor_index]['factor']
@@ -185,10 +258,11 @@ class Keyman:
             self.log.fatal('Cannot enter a blank string for any input')
             sys.exit(1)
 
-    def auth_okta(self):
+    def auth_okta(self, state_token=None):
         """Authenticate the Okta client. Prompt for MFA if necessary"""
+        self.log.debug('Attempting to authenticate to Okta')
         try:
-            self.okta_client.auth()
+            self.okta_client.auth(state_token)
         except okta.InvalidPassword:
             self.log.fatal('Invalid Username ({user}) or Password'.format(
                 user=self.config.username
@@ -209,8 +283,7 @@ class Keyman:
         except okta.AnswerRequired as err:
             self.log.warning('Question/Answer MFA response required.')
             self.log.warning("{}".format(
-                err.factor['profile']['questionText'])
-            )
+                err.factor['profile']['questionText']))
             verified = False
             while not verified:
                 answer = self.user_input('Answer: ')
@@ -241,17 +314,26 @@ class Keyman:
         roles, multiple_accounts = session.available_roles()
         if multiple_accounts:
             roles = session.account_ids_to_names(roles)
-        session.role = self.selector_menu(roles, 'role', 'Role')
+        header = [{'account': 'Account'}, {'role': 'Role'}]
+        self.role = self.selector_menu(roles, header)
+        session.role = self.role
 
     def start_session(self):
         """Initialize AWS session object."""
-        try:
-            assertion = self.okta_client.get_assertion(
-                appid=self.config.appid)
-        except okta.UnknownError:
-            sys.exit(1)
+        self.log.info('Getting SAML Assertion from {org}'.format(
+            org=self.config.org))
+        assertion = self.okta_client.get_assertion(
+            appid=self.config.appid)
 
-        return aws.Session(assertion, profile=self.config.name)
+        try:
+            session = aws.Session(assertion, profile=self.config.name,
+                                  role=self.role)
+
+        except xml.etree.ElementTree.ParseError:
+            self.log.error('Could not find any Role in the SAML assertion')
+            self.log.error(assertion.__dict__)
+            raise aws.InvalidSaml()
+        return session
 
     def aws_auth_loop(self):
         """Once we're authenticated with an OktaSaml client object we use that
@@ -264,21 +346,17 @@ class Keyman:
             # If we have a session and it's valid take a nap
             if session and session.is_valid:
                 self.log.debug('Credentials are still valid, sleeping')
-                time.sleep(15)
+                time.sleep(60)
+                retries = 0
                 continue
 
-            self.log.info('Getting SAML Assertion from {org}'.format(
-                org=self.config.org))
-
             try:
-                if session is None:
-                    session = self.start_session()
-
+                session = self.start_session()
                 session.assume_role()
 
             except aws.MultipleRoles:
                 self.handle_multiple_roles(session)
-                continue
+                session.assume_role()
             except requests.exceptions.ConnectionError:
                 self.log.warning('Connection error... will retry')
                 time.sleep(5)
@@ -287,24 +365,24 @@ class Keyman:
                     self.log.fatal('Too many connection errors')
                     return 3
                 continue
-            except aws.InvalidSaml:
-                self.log.error('AWS SAML response invalid. Retrying...')
+            except (okta.UnknownError, aws.InvalidSaml):
+                self.log.error('API response invalid. Retrying...')
                 time.sleep(1)
                 retries += 1
                 if retries > 2:
                     self.log.fatal('SAML failure. Please reauthenticate.')
                     return 1
                 continue
-            except Exception as err:
-                # Unexpected exception
-                self.log.fatal("Unexpected error: {}".format(str(err)))
-                return 2
+            except okta.ReauthNeeded as err:
+                msg = 'Application-level MFA present; re-authenticating Okta'
+                self.log.warning(msg)
+                self.auth_okta(state_token=err.state_token)
+                continue
 
             # If we're not running in re-up mode, once we have the assertion
             # and creds, go ahead and quit.
             if not self.config.reup:
                 self.log.info('All done! 👍')
-                return
+                return None
 
             self.log.info('Reup enabled, sleeping... 💤')
-            time.sleep(5)

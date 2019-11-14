@@ -154,7 +154,7 @@ class ConfigTest(unittest.TestCase):
     @mock.patch('aws_okta_keyman.config.Config.validate')
     @mock.patch('aws_okta_keyman.config.Config.parse_args')
     @mock.patch('aws_okta_keyman.config.os.path.isfile')
-    def test_get_config_write_mixed_config(self, isfile_mock, parse_mock,
+    def test_get_config_write_mixed_config(self, isfile_mock, _parse_mock,
                                            valid_mock, expuser_mock,
                                            write_mock):
         isfile_mock.return_value = True
@@ -547,7 +547,7 @@ class ConfigTest(unittest.TestCase):
     @mock.patch('aws_okta_keyman.config.getpass')
     @mock.patch('aws_okta_keyman.config.input')
     def test_interactive_config(self, input_mock, getpass_mock):
-        input_mock.side_effect = ['org', 'user', 'appid', 'test']
+        input_mock.side_effect = ['org', 'user', 'appid', 'test', '']
         getpass_mock.return_value = 'fakeuser'
         config = Config(['aws_okta_keyman.py'])
         config.write_config = mock.MagicMock()
@@ -562,7 +562,7 @@ class ConfigTest(unittest.TestCase):
     @mock.patch('aws_okta_keyman.config.getpass')
     @mock.patch('aws_okta_keyman.config.input')
     def test_interactive_config_auto_user(self, input_mock, getpass_mock):
-        input_mock.side_effect = ['org', '', 'appid', 'test']
+        input_mock.side_effect = ['org', '', 'appid', 'test', '']
         getpass_mock.return_value = 'fakeuser'
         config = Config(['aws_okta_keyman.py'])
         config.write_config = mock.MagicMock()
@@ -573,9 +573,8 @@ class ConfigTest(unittest.TestCase):
 
     @mock.patch('aws_okta_keyman.config.getpass')
     @mock.patch('aws_okta_keyman.config.input')
-    def test_interactive_config_auto_account(self, input_mock, getpass_mock):
+    def test_interactive_config_auto_account(self, input_mock, _getpass_mock):
         input_mock.side_effect = ['org', 'user', '']
-        getpass_mock.return_value = 'fakeuser'
         config = Config(['aws_okta_keyman.py'])
         config.write_config = mock.MagicMock()
 

@@ -54,7 +54,6 @@ class QuietHandler(BaseHTTPRequestHandler, object):
 
     def log_message(self, _format, *args):
         """Mute the server log."""
-        pass
 
     def do_GET(self):
         """Handle the GET and displays the Duo iframe."""
@@ -62,7 +61,6 @@ class QuietHandler(BaseHTTPRequestHandler, object):
         self.send_header('Content-type', 'text/html')
         self.end_headers()
         self.wfile.write(self.html.encode('utf-8'))
-        return
 
 
 class Duo:
@@ -142,10 +140,10 @@ class Duo:
         Returns:
             String Duo session ID
         """
-        tx = self.details['signature'].split(":")[0]
+        txid = self.details['signature'].split(":")[0]
         fake_path = 'http://0.0.0.0:3000/duo&v=2.1'
         url = "https://{}/frame/web/v1/auth?tx={}&parent={}".format(
-            self.details['host'], tx, fake_path)
+            self.details['host'], txid, fake_path)
 
         if sid and certs_url:
             self.session.params = {sid: sid, certs_url: certs_url}
@@ -231,7 +229,7 @@ class Duo:
 
             if ret.status_code != 200:
                 raise Exception("Push request failed with status {}".format(
-                        ret.status_code))
+                    ret.status_code))
 
             result = ret.json()
 

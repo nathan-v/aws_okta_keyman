@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 import logging
 import sys
 import unittest
+import xml
 
 from aws_okta_keyman import aws, okta, duo
 from aws_okta_keyman.keyman import Keyman
@@ -134,62 +135,105 @@ class KeymanTest(unittest.TestCase):
 
         self.assertEqual('test', Keyman.user_password())
 
-    @mock.patch('aws_okta_keyman.keyman.Config')
-    def test_selector_menu(self, _config_mock):
-        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
-        stdout_mock = mock.Mock()
-        sys.stdout = stdout_mock
-        keyman.user_input = mock.MagicMock()
-        keyman.user_input.return_value = 0
-        stuff = [{'artist': 'Metallica'},
-                 {'artist': 'Soundgarden'}]
+    def test_generate_template_long_data(self):
+        header = [{'artist': 'Artist'}, {'album': 'Album'}]
+        data = [
+            {'artist': 'Metallica', 'album': 'Metallica'},
+            {'artist': 'Soundgarden', 'album': 'Superunknown'}
+        ]
+        ret = Keyman.generate_template(data, header)
 
-        ret = keyman.selector_menu(stuff, 'artist', 'Artist')
+        self.assertEqual(ret, '{artist:13}{album:14}')
 
-        self.assertEqual(ret, 0)
+    def test_generate_template_long_header(self):
+        header = [{'artist': 'Full Artist Name'}, {'album': 'Full Album Name'}]
+        data = [
+            {'artist': 'Lite', 'album': 'Cubic'},
+            {'artist': 'toe', 'album': 'Hear You'}
+        ]
+        ret = Keyman.generate_template(data, header)
+
+        self.assertEqual(ret, '{artist:18}{album:17}')
+
+    def test_generate_header(self):
+        source = [{'artist': 'Artist'}, {'album': 'Album'}]
+        output = {'artist': 'Artist', 'album': 'Album'}
+
+        self.assertEqual(Keyman.generate_header(source), output)
+
+    @mock.patch('sys.stdout')
+    def test_print_selector_table(self, stdout_mock):
+        keyman = Keyman
+        Keyman.generate_header = mock.MagicMock()
+        formatted_header = {'artist': 'Artist', 'album': 'Album'}
+        Keyman.generate_header.return_value = formatted_header
+        data = [
+            {'artist': 'Metallica', 'album': 'Metallica'},
+            {'artist': 'Soundgarden', 'album': 'Superunknown'}
+        ]
+        header = [{'artist': 'Artist'}]
+        template = '{artist:13}{album:14}'
+
+        keyman.print_selector_table(template, header, data)
+
         stdout_mock.assert_has_calls([
-            mock.call.write('[0] Artist: Metallica'),
+            mock.call.write('\n    Artist       Album         '),
             mock.call.write('\n'),
-            mock.call.write('[1] Artist: Soundgarden'),
+            mock.call.write('[0] Metallica    Metallica     '),
+            mock.call.write('\n'),
+            mock.call.write('[1] Soundgarden  Superunknown  '),
             mock.call.write('\n')
         ])
 
     @mock.patch('aws_okta_keyman.keyman.Config')
-    def test_selector_menu_keep_asking_if_out_of_range(self, _config_mock):
-        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
-        stdout_mock = mock.Mock()
-        sys.stdout = stdout_mock
-        keyman.user_input = mock.MagicMock()
-        keyman.user_input.side_effect = [99, 98, 0]
-        stuff = [{'artist': 'Metallica'},
-                 {'artist': 'Soundgarden'}]
-
-        ret = keyman.selector_menu(stuff, 'artist', 'Artist')
-
-        self.assertEqual(ret, 0)
-        keyman.user_input.assert_has_calls([
-            mock.call('Artist selection: '),
-            mock.call('Artist selection: '),
-            mock.call('Artist selection: ')
-        ])
-
-    @mock.patch('aws_okta_keyman.keyman.Config')
-    def test_selector_menu_keep_asking_if_invalid(self, _config_mock):
-        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
-        stdout_mock = mock.Mock()
-        sys.stdout = stdout_mock
+    def test_selector_menu(self, _config_mock):
+        keyman = Keyman(['foo'])
+        Keyman.generate_template = mock.MagicMock()
+        Keyman.print_selector_table = mock.MagicMock()
         keyman.user_input = mock.MagicMock()
         keyman.user_input.side_effect = ['invalid', '', 0]
         stuff = [{'artist': 'Metallica'},
                  {'artist': 'Soundgarden'}]
+        header = [{'artist': 'Artist'}]
 
-        ret = keyman.selector_menu(stuff, 'artist', 'Artist')
+        ret = keyman.selector_menu(stuff, header)
 
         self.assertEqual(ret, 0)
         keyman.user_input.assert_has_calls([
-            mock.call('Artist selection: '),
-            mock.call('Artist selection: '),
-            mock.call('Artist selection: ')
+            mock.call('Selection: '),
+            mock.call('Selection: '),
+            mock.call('Selection: ')
+        ])
+        Keyman.generate_template.assert_has_calls([
+            mock.call(
+                [{'artist': 'Metallica'}, {'artist': 'Soundgarden'}],
+                [{'artist': 'Artist'}]),
+        ])
+        Keyman.print_selector_table.assert_has_calls([
+            mock.call(
+                mock.ANY,
+                [{'artist': 'Artist'}],
+                [{'artist': 'Metallica'}, {'artist': 'Soundgarden'}]),
+        ])
+
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_selector_menu_keep_asking_if_invalid(self, _config_mock):
+        keyman = Keyman(['foo'])
+        Keyman.generate_template = mock.MagicMock()
+        Keyman.print_selector_table = mock.MagicMock()
+        keyman.user_input = mock.MagicMock()
+        keyman.user_input.side_effect = ['invalid', '', 0]
+        stuff = [{'artist': 'Metallica'},
+                 {'artist': 'Soundgarden'}]
+        header = [{'artist': 'Artist'}]
+
+        ret = keyman.selector_menu(stuff, header)
+
+        self.assertEqual(ret, 0)
+        keyman.user_input.assert_has_calls([
+            mock.call('Selection: '),
+            mock.call('Selection: '),
+            mock.call('Selection: ')
         ])
 
     @mock.patch('aws_okta_keyman.keyman.Config')
@@ -207,10 +251,10 @@ class KeymanTest(unittest.TestCase):
         keyman.handle_appid_selection()
 
         keyman.selector_menu.assert_has_calls([
-            mock.call(
-                [{'name': 'myAccount', 'appid': 'myID'},
-                 {'name': 'myAccount', 'appid': 'myID'}],
-                'name', 'Account')
+            mock.call([
+                {'name': 'myAccount', 'appid': 'myID'},
+                {'name': 'myAccount', 'appid': 'myID'}],
+                [{'name': 'Account'}])
         ])
         keyman.config.set_appid_from_account_id.assert_has_calls([
             mock.call(0)
@@ -270,11 +314,11 @@ class KeymanTest(unittest.TestCase):
         ret = keyman.handle_duo_factor_selection()
 
         keyman.selector_menu.assert_has_calls([
-            mock.call(
-                [{'name': '📲 Duo Push', 'factor': 'push'},
-                 {'name': '📟 OTP Passcode', 'factor': 'passcode'},
-                 {'name': '📞 Phone call', 'factor': 'call'}],
-                'name', 'Factor')
+            mock.call([
+                {'name': '📲 Duo Push', 'factor': 'push'},
+                {'name': '📟 OTP Passcode', 'factor': 'passcode'},
+                {'name': '📞 Phone call', 'factor': 'call'}],
+                [{'name': 'Duo Factor'}])
         ])
         self.assertEqual(ret, 'push')
 
@@ -484,7 +528,7 @@ class KeymanTest(unittest.TestCase):
         keyman.handle_multiple_roles(mock_session)
 
         keyman.selector_menu.assert_has_calls([
-            mock.call([{}, {}], 'role', 'Role')
+            mock.call([{}, {}], [{'account': 'Account'}, {'role': 'Role'}])
         ])
         mock_session.assert_has_calls([
             mock.call.available_roles()
@@ -517,16 +561,27 @@ class KeymanTest(unittest.TestCase):
             mock.call.get_assertion(appid=mock.ANY)
         ])
         aws_mock.assert_has_calls([
-            mock.call.Session('assertion', profile=mock.ANY)
+            mock.call.Session('assertion', profile=mock.ANY, role=None)
         ])
 
     @mock.patch('aws_okta_keyman.keyman.Config')
-    def test_start_session_failure(self, _config_mock):
+    def test_start_session_okta_failure(self, _config_mock):
         keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
         keyman.okta_client = mock.MagicMock()
         keyman.okta_client.get_assertion.side_effect = okta.UnknownError
 
-        with self.assertRaises(SystemExit):
+        with self.assertRaises(okta.UnknownError):
+            keyman.start_session()
+
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    @mock.patch('aws_okta_keyman.keyman.aws.Session')
+    def test_start_session_xml_failure(self, session_mock, _config_mock):
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
+        keyman.okta_client = mock.MagicMock()
+        xml_error = xml.etree.ElementTree.ParseError()
+        session_mock.side_effect = xml_error
+
+        with self.assertRaises(aws.InvalidSaml):
             keyman.start_session()
 
     @mock.patch('aws_okta_keyman.keyman.Config')
@@ -556,22 +611,63 @@ class KeymanTest(unittest.TestCase):
         assert keyman.start_session.called
         self.assertEqual(ret, 3)
 
+    @mock.patch('time.sleep', side_effect=[None, Exception])
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_aws_auth_loop_continue(self, config_mock, sleep_mock):
+        config_mock().reup = False
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
+        keyman.config.reup = True
+        session_instance = mock.MagicMock()
+        session_instance.is_valid = True
+        keyman.start_session = mock.MagicMock()
+        keyman.start_session.return_value = session_instance
+
+        with self.assertRaises(Exception):
+            keyman.aws_auth_loop()
+
+        sleep_mock.assert_has_calls([
+            mock.call(60)
+        ])
+
     @mock.patch('aws_okta_keyman.keyman.Config')
     def test_aws_auth_loop_multirole(self, config_mock):
         config_mock().reup = False
         keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
         session_instance = mock.MagicMock()
-        session_instance.assume_role.side_effect = [aws.MultipleRoles]
+        session_instance.assume_role.side_effect = aws.MultipleRoles
         keyman.start_session = mock.MagicMock()
         keyman.start_session.return_value = session_instance
         keyman.handle_multiple_roles = mock.MagicMock()
-        keyman.handle_multiple_roles.side_effect = Exception()
 
         with self.assertRaises(Exception):
             keyman.aws_auth_loop()
 
+        session_instance.assume_role.assert_has_calls([
+            mock.call(),
+            mock.call(),
+        ])
         keyman.handle_multiple_roles.assert_has_calls([
             mock.call(mock.ANY)
+        ])
+
+    @mock.patch('time.sleep', return_value=None)
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_aws_auth_loop_reauth(self, config_mock, _sleep_mock):
+        config_mock().reup = False
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
+        session_instance = mock.MagicMock()
+        session_instance.assume_role.side_effect = okta.ReauthNeeded
+        session_instance.is_valid = False
+        keyman.start_session = mock.MagicMock()
+        keyman.start_session.side_effect = session_instance, Exception()
+        keyman.handle_multiple_roles = mock.MagicMock()
+        keyman.auth_okta = mock.MagicMock()
+
+        with self.assertRaises(Exception):
+            keyman.aws_auth_loop()
+
+        keyman.auth_okta.assert_has_calls([
+            mock.call(state_token=None)
         ])
 
     @mock.patch('time.sleep', return_value=None)
@@ -581,6 +677,7 @@ class KeymanTest(unittest.TestCase):
         keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
         keyman.start_session = mock.MagicMock()
         keyman.start_session.side_effect = aws.InvalidSaml()
+        keyman.okta_client = mock.MagicMock()
 
         ret = keyman.aws_auth_loop()
 
@@ -595,7 +692,7 @@ class KeymanTest(unittest.TestCase):
         keyman.start_session = mock.MagicMock()
         keyman.start_session.side_effect = Exception()
 
-        ret = keyman.aws_auth_loop()
+        with self.assertRaises(Exception):
+            keyman.aws_auth_loop()
 
         assert keyman.start_session.called
-        self.assertEqual(ret, 2)
