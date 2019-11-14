@@ -21,6 +21,7 @@ import getpass
 import logging
 import os
 import sys
+import textwrap
 
 import yaml
 
@@ -76,18 +77,18 @@ class Config:
         """Get the config and set everything up based on the args and/or local
         config file.
         """
-        file = os.path.expanduser('~') + '/.config/aws_okta_keyman.yml'
+        config_file = os.path.expanduser('~') + '/.config/aws_okta_keyman.yml'
         if '-w' in self.argv[1:] or '--writepath' in self.argv[1:]:
             self.parse_args(main_required=False)
             self.write_config()
         elif '-c' in self.argv[1:] or '--config' in self.argv[1:]:
             self.parse_args(main_required=False)
             self.parse_config(self.config)
-        elif os.path.isfile(file):
+        elif os.path.isfile(config_file):
             # If we haven't been told to write out the args and no filename is
             # given just use the default path
             self.parse_args(main_required=False)
-            self.parse_config(file)
+            self.parse_config(config_file)
         else:
             # No default file, none specified; operate on args only
             self.parse_args()
@@ -300,18 +301,32 @@ class Config:
                 self.username = 'automatic-username'
 
             msg = (
-                '\nIf you use a single AWS integration you can optionally '
-                'provide the following answers. If you have multiple AWS '
-                'integrations or you are not sure of the answers just leave '
-                'these blank.')
-            print(msg)
-            print("\nWhat is your AWS integration app ID?")
-            print("Example; 0oaciCSo1d8/123")
-            appid = self.user_input('App ID: ')
-            if appid:
-                print("\nPlease provide a friendly name for this app.")
-                name = self.user_input('App ID: ')
-                self.accounts = [{'name': name, 'appid': appid}]
+                'Next we can optionally configure your AWS integrations. '
+                'This is not required as the AWS integrations can be picked '
+                'up automatically from Okta. If you would prefer to list only '
+                'specific integrations or prefer to specify the friendly '
+                'names yourself you can provide the following information. '
+                'You will be prompted to continue providing integration '
+                'details until you provide a blank response to the app ID. '
+                'If you are unsure how to answer these questions just leave '
+                'the app ID blank.')
+            print('')
+            for line in textwrap.wrap(msg):
+                print(line)
+
+            accounts = []
+            appid = None
+            while not appid == '':
+                print("\nWhat is your AWS integration app ID?")
+                print("Example; 0oaciCSo1d8/123")
+                appid = self.user_input('App ID: ')
+                if appid:
+                    print("\nPlease provide a friendly name for this app.")
+                    name = self.user_input('App ID: ')
+                    accounts.append({'name': name, 'appid': appid})
+
+            if accounts:
+                self.accounts = accounts
 
             self.write_config()
             print('')

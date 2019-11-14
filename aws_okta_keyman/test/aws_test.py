@@ -119,10 +119,35 @@ class TestCredentials(unittest.TestCase):
 
 class TestSession(unittest.TestCase):
 
-    @mock.patch('aws_okta_keyman.aws_saml.SamlAssertion')
-    def setUp(self, mock_saml):
+    def setUp(self):
+        self.patcher = mock.patch('aws_okta_keyman.aws.SamlAssertion')
+        self.mock_saml = self.patcher.start()
         self.fake_assertion = mock.MagicMock(name='FakeAssertion')
-        mock_saml.return_value = self.fake_assertion
+        self.mock_saml.return_value = self.fake_assertion
+
+    @mock.patch('os.path.expanduser')
+    @mock.patch('os.makedirs')
+    @mock.patch('os.path.exists')
+    def test_init_folder_missing(self, exists_mock, makedirs_mock,
+                                 expuser_mock):
+        exists_mock.return_value = False
+        expuser_mock.return_value = '/home/fakeuser'
+
+        aws.Session('BogusAssertion')
+
+        makedirs_mock.assert_has_calls([mock.call('/home/fakeuser')])
+
+    @mock.patch('os.path.expanduser')
+    @mock.patch('os.makedirs')
+    @mock.patch('os.path.exists')
+    def test_init_folder_exists(self, exists_mock, _makedirs_mock,
+                                expuser_mock):
+        exists_mock.return_value = True
+        expuser_mock.return_value = '/home/fakeuser'
+
+        aws.Session('BogusAssertion')
+
+        exists_mock.assert_has_calls([mock.call('/home/fakeuser')])
 
     def test_is_valid_false(self):
         session = aws.Session('BogusAssertion')
@@ -232,45 +257,49 @@ class TestSession(unittest.TestCase):
         with self.assertRaises(aws.MultipleRoles):
             session.assume_role()
 
-    def test_assume_role_bad_assertion_raises_invalidsaml(self):
-        session = aws.Session('BogusAssertion')
-        with self.assertRaises(aws.InvalidSaml):
-            session.assume_role()
-
     def test_available_roles(self):
-        assertion = mock.Mock()
-        roles = [{'role': '::::1:', 'principle': ''},
-                 {'role': '::::1:', 'principle': ''}]
-        assertion.roles.return_value = roles
+        roles = [{'role': '::::1:role/role'},
+                 {'role': '::::1:role/role'}]
         session = aws.Session('BogusAssertion')
-        session.assertion = assertion
+        session.roles = roles
+        expected = [
+            {'account': '1', 'role': 'role'},
+            {'account': '1', 'role': 'role'}
+            ], False
 
         result = session.available_roles()
 
-        self.assertEqual((roles, False), result)
+        print(result)
+        self.assertEqual(expected, result)
 
     def test_available_roles_multiple_accounts(self):
-        assertion = mock.Mock()
-        roles = [{'role': '::::1:', 'principle': ''},
-                 {'role': '::::2:', 'principle': ''}]
-        assertion.roles.return_value = roles
+        roles = [{'role': '::::1:role/role'},
+                 {'role': '::::2:role/role'}]
         session = aws.Session('BogusAssertion')
-        session.assertion = assertion
+        session.roles = roles
+        expected = [
+            {'account': '1', 'role': 'role'},
+            {'account': '2', 'role': 'role'}
+            ], True
 
         result = session.available_roles()
 
-        self.assertEqual((roles, True), result)
+        print(result)
+        self.assertEqual(expected, result)
 
     def test_account_ids_to_names_map(self):
         session = aws.Session('BogusAssertion')
         session.get_account_name_map = mock.MagicMock()
         account_map = {'1': 'One', '2': 'Two'}
         session.get_account_name_map.return_value = account_map
-        roles = [{'role': '::::1:role'},
-                 {'role': '::::2:role'}]
+        roles = [{'role': 'role', 'account': '1'},
+                 {'role': 'role', 'account': '2'}]
+        expected = [{'account': 'One', 'role': 'role'},
+                    {'account': 'Two', 'role': 'role'}]
+
         ret = session.account_ids_to_names(roles)
 
-        self.assertEqual(ret, [{'role': 'One - role'}, {'role': 'Two - role'}])
+        self.assertEqual(ret, expected)
 
     def test_account_ids_to_names_call_failed(self):
         session = aws.Session('BogusAssertion')

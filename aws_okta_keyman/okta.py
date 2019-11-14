@@ -37,10 +37,6 @@ BASE_URL = 'https://{organization}.okta.com'
 PREVIEW_BASE_URL = 'https://{organization}.oktapreview.com'
 
 
-class BaseException(Exception):
-    """Base Exception for Okta Auth."""
-
-
 class UnknownError(Exception):
     """Some Expected Return Was Received."""
 
@@ -51,6 +47,13 @@ class EmptyInput(BaseException):
 
 class InvalidPassword(BaseException):
     """Invalid Password."""
+
+
+class ReauthNeeded(BaseException):
+    """Raised when the SAML Assertion is invalid and we need to reauth."""
+    def __init__(self, state_token=None):
+        self.state_token = state_token
+        super(ReauthNeeded, self).__init__()
 
 
 class PasscodeRequired(BaseException):
@@ -133,23 +136,23 @@ class Okta(object):
                                  allow_redirects=False,
                                  cookies={'sid': self.session_token})
 
+        resp.raise_for_status()
         resp_obj = resp.json()
         LOG.debug(resp_obj)
-
-        resp.raise_for_status()
         return resp_obj
 
     def set_token(self, ret):
         """Parse an authentication response, get a long-lived token, store it
-
         Parses a SUCCESSFUL authentication response from Okta to get the
         one time use token, requests a long-lived sessoin token from Okta,  and
         stores the new token.
-
         Args:
             ret: The response from Okta that we know is successful and contains
             a sessionToken
         """
+        if self.session_token:
+            # We have a session token already
+            return
         first_name = ret['_embedded']['user']['profile']['firstName']
         last_name = ret['_embedded']['user']['profile']['lastName']
         LOG.info('Successfully authed {first_name} {last_name}'.format(
@@ -178,14 +181,12 @@ class Okta(object):
         """
         if len(passcode) > 6 or len(passcode) < 5:
             LOG.error('Passcodes must be 5 or 6 digits')
-            return False
+            return
 
         valid = self.send_user_response(fid, state_token, passcode, 'passCode')
         if valid:
             self.set_token(valid)
             return True
-        else:
-            return False
 
     def validate_answer(self, fid, state_token, answer):
         """Validate an Okta user with Question-based MFA.
@@ -203,16 +204,14 @@ class Okta(object):
         Returns:
             True/False whether or not authentication was successful
         """
-        if len(answer) == 0:
+        if not answer:
             LOG.error('Answer cannot be blank')
-            return False
+            return
 
         valid = self.send_user_response(fid, state_token, answer, 'answer')
         if valid:
             self.set_token(valid)
             return True
-        else:
-            return False
 
     def send_user_response(self, fid, state_token, user_response, resp_type):
         """Call Okta with a factor response and verify it.
@@ -235,7 +234,7 @@ class Okta(object):
         except requests.exceptions.HTTPError as err:
             if err.response.status_code == 403:
                 LOG.error('Invalid Passcode Detected')
-                return False
+                return None
             if err.response.status_code == 401:
                 LOG.error('Invalid Passcode Retries Exceeded')
                 raise UnknownError('Retries exceeded')
@@ -339,7 +338,7 @@ class Okta(object):
                 return True
         return None
 
-    def mfa_wait_loop(self, ret, data, sleep=1):
+    def mfa_wait_loop(self, ret, data, sleep=2):
         """Wait loop that keeps checking Okta for MFA status.
 
         Args:
@@ -371,7 +370,7 @@ class Okta(object):
             LOG.info('User canceled waiting for MFA success.')
             raise
 
-    def auth(self):
+    def auth(self, state_token=None):
         """Perform an initial authentication against Okta.
 
         The initial Okta Login authentication is handled here - and optionally
@@ -393,11 +392,14 @@ class Okta(object):
         path = '/authn'
         data = {'username': self.username,
                 'password': self.password}
+        if state_token:
+            data = {'stateToken': state_token}
         try:
             ret = self._request(path, data)
         except requests.exceptions.HTTPError as err:
             if err.response.status_code == 401:
                 raise InvalidPassword()
+            raise
 
         status = ret.get('status', None)
 
@@ -405,11 +407,11 @@ class Okta(object):
             self.set_token(ret)
             return None
 
-        if status == 'MFA_ENROLL' or status == 'MFA_ENROLL_ACTIVATE':
+        if status in ('MFA_ENROLL', 'MFA_ENROLL_ACTIVATE'):
             LOG.warning('User {u} needs to enroll in 2FA first'.format(
                 u=self.username))
 
-        if status == 'MFA_REQUIRED' or status == 'MFA_CHALLENGE':
+        if status in ('MFA_REQUIRED', 'MFA_CHALLENGE'):
             return self.handle_mfa_response(ret)
 
         raise UnknownError(status)
@@ -538,9 +540,9 @@ class Okta(object):
         resp = self.session.get(url=url, headers=headers,
                                 allow_redirects=False, cookies=cookies)
         resp_obj = resp.json()
-        LOG.debug(resp_obj)
 
         resp.raise_for_status()
+
         aws_list = {i['label']: i['linkUrl'] for i in resp_obj
                     if i['appName'] == 'amazon_aws'}
 

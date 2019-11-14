@@ -28,9 +28,7 @@ import datetime
 import logging
 import os
 import re
-import xml
 from builtins import str
-from os.path import expanduser
 
 import boto3
 import bs4
@@ -116,8 +114,9 @@ class Session(object):
                  assertion,
                  credential_path='~/.aws',
                  profile='default',
-                 region='us-east-1'):
-        cred_dir = expanduser(credential_path)
+                 region='us-east-1',
+                 role=None):
+        cred_dir = os.path.expanduser(credential_path)
         cred_file = os.path.join(cred_dir, 'credentials')
 
         boto_logger = logging.getLogger('botocore')
@@ -143,8 +142,8 @@ class Session(object):
             'SessionToken': None,
             'Expiration': None}
         self.session_token = None
-        self.roles = None
-        self.role = None
+        self.roles = self.assertion.roles()
+        self.role = role
 
     @property
     def is_valid(self):
@@ -171,19 +170,23 @@ class Session(object):
     def available_roles(self):
         """Return the roles available from AWS.
 
-        Returns: Tuple, dict of roles and a bool of if there was multiple
-        accounts found
+        Returns: Tuple, list of roles as dicts and a bool that is true when
+        multiple accounts were found
         """
-        self.roles = self.assertion.roles()
         multiple_accounts = False
         first_account = ''
+        formatted_roles = []
         for role in self.roles:
             account = role['role'].split(':')[4]
+            role = role['role'].split(':')[5].split('/')[1]
+            formatted_roles.append(
+                {'account': account, 'role': role})
             if first_account == '':
                 first_account = account
             elif first_account != account:
                 multiple_accounts = True
-        return self.roles, multiple_accounts
+
+        return formatted_roles, multiple_accounts
 
     def assume_role(self):
         """Use the SAML Assertion to actually get the credentials.
@@ -193,14 +196,9 @@ class Session(object):
         disk and can be used for an hour before they need to be replaced.
         """
         if self.role is None:
-            try:
-                if len(self.assertion.roles()) > 1:
-                    raise MultipleRoles
-                self.role = 0
-            except xml.etree.ElementTree.ParseError:
-                LOG.error('Could not find any Role in the SAML assertion')
-                LOG.error(self.assertion.__dict__)
-                raise InvalidSaml()
+            if len(self.assertion.roles()) > 1:
+                raise MultipleRoles
+            self.role = 0
 
         LOG.info('Assuming role: {}'.format(self.roles[self.role]['role']))
 
@@ -228,7 +226,6 @@ class Session(object):
         args:
             roles: Dict of the roles from AWS to get the account names for
 
-
         Returns: Dict of account names and role names for user selection
         """
         try:
@@ -238,16 +235,10 @@ class Session(object):
                    'Falling back to just account IDs')
             LOG.warning(msg)
             return roles
-        new_roles = []
         for role in roles:
-            new_roles.append(
-                {'role': '{} - {}'.format(
-                    accounts[role['role'].split(':')[4]],
-                    role['role'].split(':')[5])
-                 }
-                )
+            role['account'] = accounts[role['account']]
         LOG.debug("AWS roles with friendly names: {}".format(accounts))
-        return new_roles
+        return sorted(roles, key=lambda k: (k['account'], k['role']))
 
     def get_account_name_map(self):
         """ Get the friendly to ID mappings from AWS via hacktastic HTML
@@ -258,11 +249,11 @@ class Session(object):
         headers = {'Content-Type': 'application/x-www-form-urlencoded'}
         data = {'SAMLResponse': self.assertion.encode()}
         resp = requests.post(url=url, headers=headers, data=data)
-        LOG.debug("AWS SAML web response: {}".format(resp.text))
         resp.raise_for_status()
         return self.account_names_from_html(resp.text)
 
-    def account_names_from_html(self, html):
+    @staticmethod
+    def account_names_from_html(html):
         """ Parse the AWS SAML login page HTML for account numbers and names
 
         Returns: Dict of the account numbers and names

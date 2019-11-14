@@ -5,7 +5,7 @@ import unittest
 
 import requests
 
-from aws_okta_keyman.okta import UnknownError
+from aws_okta_keyman.okta import UnknownError, ReauthNeeded
 from aws_okta_keyman.okta_saml import OktaSaml
 
 if sys.version_info[0] < 3:  # Python 2
@@ -31,6 +31,7 @@ class MockResponse:
         self.headers = headers
         self.text = text
         self.status_code = status_code
+        self.url = ''
 
     def text(self):
         return self.text
@@ -60,6 +61,24 @@ class OktaSAMLTest(unittest.TestCase):
         ret = okta_saml.get_okta_error_from_response(response)
 
         self.assertEqual(ret, 'BAD STUFF')
+
+    def test_get_state_token_from_html_format_a(self):
+        html = b"\n  var stateToken = \'win\';\n"
+        ret = OktaSaml.get_state_token_from_html(html)
+
+        self.assertEqual(ret, 'win')
+
+    def test_get_state_token_from_html_format_b(self):
+        html = b"\n  var stateToken = \'win\x2Dning\';\n"
+        ret = OktaSaml.get_state_token_from_html(html)
+
+        self.assertEqual(ret, 'win-ning')
+
+    def test_get_state_token_from_html_format_c(self):
+        html = b"\n  var stateToken = \'win\\x2Dning\';\n"
+        ret = OktaSaml.get_state_token_from_html(html)
+
+        self.assertEqual(ret, 'win-ning')
 
     def test_get_assertion_successful(self):
         okta_saml = OktaSaml('org', 'user', 'password')
@@ -92,6 +111,7 @@ class OktaSAMLTest(unittest.TestCase):
         okta_saml.session = mock.MagicMock()
         resp = requests.Response()
         resp.status_code = 404
+        resp.url = ''
         okta_saml.session.get.return_value = resp
 
         with self.assertRaises(UnknownError):
@@ -103,7 +123,40 @@ class OktaSAMLTest(unittest.TestCase):
         okta_saml.session = mock.MagicMock()
         resp = requests.Response()
         resp.status_code = 500
+        resp.url = ''
         okta_saml.session.get.return_value = resp
 
         with self.assertRaises(UnknownError):
             okta_saml.get_assertion('foo')
+
+    def test_get_assertion_2FA(self):
+        okta_saml = OktaSaml('org', 'user', 'password')
+        okta_saml.assertion = mock.MagicMock()
+        okta_saml.session = mock.MagicMock()
+        resp = MockResponse(None, None, 'assert')
+        resp.url = 'https://foo.bar/second-factor?zort=yep'
+        okta_saml.session.get.return_value = resp
+        okta_saml.get_state_token_from_html = mock.MagicMock()
+        okta_saml.get_state_token_from_html.return_value = 'token'
+
+        with self.assertRaises(ReauthNeeded) as err:
+            okta_saml.get_assertion('foo')
+
+        exc = err.exception
+        self.assertEqual(exc.state_token, 'token')
+
+    def test_get_assertion_2FA_no_token(self):
+        okta_saml = OktaSaml('org', 'user', 'password')
+        okta_saml.assertion = mock.MagicMock()
+        okta_saml.session = mock.MagicMock()
+        resp = MockResponse(None, None, 'assert')
+        resp.url = 'https://foo.bar/second-factor?zort=yep'
+        okta_saml.session.get.return_value = resp
+        okta_saml.get_state_token_from_html = mock.MagicMock()
+        okta_saml.get_state_token_from_html.side_effect = AttributeError
+
+        with self.assertRaises(ReauthNeeded) as err:
+            okta_saml.get_assertion('foo')
+
+        exc = err.exception
+        self.assertEqual(exc.state_token, None)

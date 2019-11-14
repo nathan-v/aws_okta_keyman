@@ -304,6 +304,18 @@ class OktaTest(unittest.TestCase):
             mock.call('/sessions', {'sessionToken': 'XXXTOKENXXX'})
             ])
 
+    def test_set_token_skip_if_exists(self):
+        client = okta.Okta('organization', 'username', 'password')
+        client.session_token = 'woot'
+        client.session = mock.MagicMock(name='session')
+        client._request = mock.MagicMock()
+        client._request.return_value = {'id': 'LongToken'}
+
+        client.set_token(SUCCESS_RESPONSE)
+
+        self.assertEqual(client.session_token, 'woot')
+        assert not client._request.called
+
     def test_validate_mfa(self):
         client = okta.Okta('organization', 'username', 'password')
         client.send_user_response = mock.MagicMock(name='send_user_response')
@@ -316,7 +328,7 @@ class OktaTest(unittest.TestCase):
     def test_validate_mfa_too_short(self):
         client = okta.Okta('organization', 'username', 'password')
         ret = client.validate_mfa('fid', 'token', '123')
-        self.assertEqual(False, ret)
+        self.assertEqual(None, ret)
 
     def test_validate_mfa_failed(self):
         client = okta.Okta('organization', 'username', 'password')
@@ -324,7 +336,7 @@ class OktaTest(unittest.TestCase):
         client.send_user_response.return_value = False
         client.set_token = mock.MagicMock()
         ret = client.validate_mfa('fid', 'token', '123456')
-        self.assertEqual(False, ret)
+        self.assertEqual(None, ret)
 
     def test_validate_answer(self):
         client = okta.Okta('organization', 'username', 'password')
@@ -338,7 +350,7 @@ class OktaTest(unittest.TestCase):
     def test_validate_answer_too_short(self):
         client = okta.Okta('organization', 'username', 'password')
         ret = client.validate_answer('fid', 'token', '')
-        self.assertEqual(False, ret)
+        self.assertEqual(None, ret)
 
     def test_validate_answer_failed(self):
         client = okta.Okta('organization', 'username', 'password')
@@ -346,7 +358,7 @@ class OktaTest(unittest.TestCase):
         client.send_user_response.return_value = False
         client.set_token = mock.MagicMock()
         ret = client.validate_answer('fid', 'token', '123456')
-        self.assertEqual(False, ret)
+        self.assertEqual(None, ret)
 
     def test_send_user_response(self):
         client = okta.Okta('organization', 'username', 'password')
@@ -374,7 +386,7 @@ class OktaTest(unittest.TestCase):
             response=resp)
 
         ret = client.send_user_response('fid', 'token', '123456', 'passCode')
-        self.assertEqual(False, ret)
+        self.assertEqual(None, ret)
 
     def test_send_user_response_retries_exceeded(self):
         client = okta.Okta('organization', 'username', 'password')
@@ -523,8 +535,27 @@ class OktaTest(unittest.TestCase):
         client._request = mock.MagicMock(name='_request')
         client._request.side_effect = [SUCCESS_RESPONSE]
         client.set_token = mock.MagicMock()
+
         ret = client.auth()
+
         self.assertEqual(ret, None)
+        client._request.assert_has_calls([
+            mock.call('/authn',
+                      {'username': 'username', 'password': 'password'})
+        ])
+
+    def test_auth_with_token(self):
+        client = okta.Okta('organization', 'username', 'password')
+        client._request = mock.MagicMock(name='_request')
+        client._request.side_effect = [SUCCESS_RESPONSE]
+        client.set_token = mock.MagicMock()
+
+        client.auth('token')
+
+        client._request.assert_has_calls([
+            mock.call('/authn',
+                      {'stateToken': 'token'})
+        ])
 
     def test_auth_mfa_challenge(self):
         client = okta.Okta('organization', 'username', 'password')
@@ -546,6 +577,18 @@ class OktaTest(unittest.TestCase):
             response=resp)
 
         with self.assertRaises(okta.InvalidPassword):
+            client.auth()
+
+    def test_auth_call_error(self):
+        client = okta.Okta('organization', 'username', 'password')
+        resp = requests.Response()
+        resp.status_code = 403
+        resp.body = 'Bad Password'
+        client._request = mock.MagicMock(name='_request')
+        client._request.side_effect = requests.exceptions.HTTPError(
+            response=resp)
+
+        with self.assertRaises(requests.exceptions.HTTPError):
             client.auth()
 
     def test_auth_with_unexpected_response(self):
@@ -849,4 +892,15 @@ class AnswerRequiredTest(unittest.TestCase):
             error_response = err
 
         self.assertEqual(error_response.factor, 'factor')
+        self.assertEqual(error_response.state_token, 'state_token')
+
+
+class ReauthNeededTest(unittest.TestCase):
+    def test_class_properties(self):
+        error_response = None
+        try:
+            raise okta.ReauthNeeded('state_token')
+        except okta.ReauthNeeded as err:
+            error_response = err
+
         self.assertEqual(error_response.state_token, 'state_token')

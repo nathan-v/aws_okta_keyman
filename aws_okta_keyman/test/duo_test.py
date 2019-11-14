@@ -63,6 +63,7 @@ class TestDuo(unittest.TestCase):
 
     def test_init_missing_args(self):
         with self.assertRaises(TypeError):
+            # noinspection PyArgumentList
             duo.Duo()
 
     def test_init_with_args(self):
@@ -304,6 +305,7 @@ class TestDuo(unittest.TestCase):
 
 
 class TestQuietHandler(unittest.TestCase):
+    # noinspection PyArgumentList
     def test_init_missing_args(self):
         with self.assertRaises(TypeError):
             duo.QuietHandler()
