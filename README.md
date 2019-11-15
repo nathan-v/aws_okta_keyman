@@ -183,8 +183,6 @@ App ID:
 14:21:58   (INFO) Config file written. Please rerun Keyman
 ```
 
-`aws_okta_keyman config`
-
 ### Python Versions
 
 Python 2.7.4+ and Python 3.5.0+ are supported
@@ -195,7 +193,7 @@ Python 2.7.4+ and Python 3.5.0+ are supported
 
 #### Mac OS Installation with Homebrew
 
-...
+Coming soon.
 
 #### Typical Linux or Windows Installation
 
