@@ -193,7 +193,13 @@ Python 2.7.4+ and Python 3.5.0+ are supported
 
 #### Mac OS Installation with Homebrew
 
-Coming soon.
+`brew tap nathan-v/aws-okta-keyman` and then `brew install aws_okta_keyman`.
+
+Or install via URL (which will not receive updates):
+
+```
+brew install https://raw.githubusercontent.com/nathan-v/homebrew-aws-okta-keyman/master/Formula/aws_okta_keyman.rb
+```
 
 #### Typical Linux or Windows Installation
 
