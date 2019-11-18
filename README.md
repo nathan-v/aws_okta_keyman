@@ -96,10 +96,23 @@ command line or in the config file. A config file can still optionally be used
 to ensure account names or order if preferred. This means with no configuration
 saved you only need to provide your organization.
 
+
 ### Automatic Username
 
 AWS Okta Keyman will use the current user as the username for Okta
 authentication if no username has been provided.
+
+
+### Keyring Password Cache
+
+AWS Okta Keyman can use your local keyring to store your Okta password to allow you to
+run the tool repeatedly without needing to type your password in each time. For details on how this
+is accomplished check out [keyring][keyring].
+
+```text
+aws_okta_keyman -P    # Enable the password cache
+aws_okta_keyman -R    # Reset the cached password in case of mistaken entry or password change
+```
 
 
 ### Config file .. predefined settings for you or your org
@@ -301,3 +314,4 @@ license is in the LICENSE_MIT.txt file.
 [okta_verify]: https://www.okta.com/blog/tag/okta-verify-with-push/
 [aws_saml]: http://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRoleWithSAML.html
 [duo_auth]: https://duo.com/
+[keyring]: https://github.com/jaraco/keyring

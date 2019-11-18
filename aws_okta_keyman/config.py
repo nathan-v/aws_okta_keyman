@@ -46,6 +46,8 @@ class Config:
         self.duo_factor = None
         self.name = 'default'
         self.oktapreview = None
+        self.password_cache = None
+        self.password_reset = None
 
         if len(argv) > 1:
             if argv[1] == 'config':
@@ -214,6 +216,18 @@ class Config:
                                        'production Okta organization.'
                                    ),
                                    default=False)
+        optional_args.add_argument('-P', '--password_cache',
+                                   action='store_true', help=(
+                                       'Use OS keyring to cache your password.'
+                                   ),
+                                   default=False)
+        optional_args.add_argument('-R', '--password_reset',
+                                   action='store_true', help=(
+                                       'Reset your password in the cache. '
+                                       'Use this to update the cached password'
+                                       ' if it has changed or is incorrect.'
+                                   ),
+                                   default=False)
 
     @staticmethod
     def read_yaml(filename, raise_on_error=False):
@@ -267,7 +281,7 @@ class Config:
     def clean_config_for_write(config):
         """Remove args we don't want to save to a config file."""
         ignore = ['name', 'appid', 'argv', 'writepath', 'config', 'debug',
-                  'oktapreview']
+                  'oktapreview', 'password_reset']
         for var in ignore:
             del config[var]
 

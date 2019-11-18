@@ -9,6 +9,7 @@ import xml
 from aws_okta_keyman import aws, okta, duo
 from aws_okta_keyman.keyman import Keyman
 
+import keyring
 import requests
 
 if sys.version_info[0] < 3:  # Python 2
@@ -129,11 +130,62 @@ class KeymanTest(unittest.TestCase):
 
         self.assertEqual('test', Keyman.user_input('input test'))
 
+    @mock.patch('aws_okta_keyman.keyman.Config')
     @mock.patch('aws_okta_keyman.keyman.getpass')
-    def test_user_password(self, pass_mock):
+    def test_user_password_no_cache(self, pass_mock, _config_mock):
+        keyman = Keyman('')
+        keyman.config.password_cache = False
         pass_mock.getpass.return_value = 'test'
 
-        self.assertEqual('test', Keyman.user_password())
+        self.assertEqual('test', keyman.user_password())
+
+    @mock.patch('aws_okta_keyman.keyman.keyring.get_password')
+    @mock.patch('aws_okta_keyman.keyman.keyring.get_keyring')
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    @mock.patch('aws_okta_keyman.keyman.getpass')
+    def test_user_password_cache_unavailable(self, pass_mock, _config_mock,
+                                             keyring_kr_mock, keyring_pw_mock):
+        keyman = Keyman('')
+        keyman.config.password_cache = True
+        keyman.config.password_reset = False
+        keyring_kr_mock.side_effect = keyring.errors.InitError
+        pass_mock.getpass.return_value = 'test'
+
+        self.assertEqual('test', keyman.user_password())
+        assert not keyring_pw_mock.called
+
+    @mock.patch('aws_okta_keyman.keyman.keyring.get_password')
+    @mock.patch('aws_okta_keyman.keyman.keyring.get_keyring')
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    @mock.patch('aws_okta_keyman.keyman.getpass')
+    def test_user_password_cache_get_success(self, pass_mock, _config_mock,
+                                             keyring_kr_mock, keyring_pw_mock):
+        keyman = Keyman('')
+        keyman.config.password_cache = True
+        keyman.config.password_reset = False
+        keyring_pw_mock.return_value = 'test'
+
+        self.assertEqual('test', keyman.user_password())
+        assert not pass_mock.called
+
+    @mock.patch('aws_okta_keyman.keyman.keyring.set_password')
+    @mock.patch('aws_okta_keyman.keyman.keyring.get_password')
+    @mock.patch('aws_okta_keyman.keyman.keyring.get_keyring')
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    @mock.patch('aws_okta_keyman.keyman.getpass')
+    def test_user_password_cache_get_empty(self, pass_mock, _config_mock,
+                                           keyring_kr_mock, keyring_pw_mock,
+                                           keyring_setpw_mock):
+        keyman = Keyman('')
+        keyman.config.password_cache = True
+        keyman.config.password_reset = False
+        keyring_pw_mock.return_value = None
+        pass_mock.getpass.return_value = 'test'
+
+        self.assertEqual('test', keyman.user_password())
+        keyring_setpw_mock.assert_has_calls([
+            mock.call('aws_okta_keyman', mock.ANY, 'test')
+        ])
 
     def test_generate_template_long_data(self):
         header = [{'artist': 'Artist'}, {'album': 'Album'}]
