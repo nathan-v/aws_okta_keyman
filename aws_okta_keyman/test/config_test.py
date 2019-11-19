@@ -508,7 +508,8 @@ class ConfigTest(unittest.TestCase):
             'debug': 'foo',
             'oktapreview': 'foo',
             'accounts': None,
-            'shouldstillbehere': 'woohoo'
+            'shouldstillbehere': 'woohoo',
+            'password_reset': True
         }
         config_out = {
             'shouldstillbehere': 'woohoo'
@@ -530,7 +531,8 @@ class ConfigTest(unittest.TestCase):
             'debug': 'foo',
             'oktapreview': 'foo',
             'accounts': accounts,
-            'shouldstillbehere': 'woohoo'
+            'shouldstillbehere': 'woohoo',
+            'password_reset': True
         }
         config_out = {
             'accounts': accounts,

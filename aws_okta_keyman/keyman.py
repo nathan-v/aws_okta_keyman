@@ -26,6 +26,7 @@ import traceback
 import xml
 from builtins import input
 
+import keyring
 import rainbow_logging_handler
 import requests
 
@@ -107,10 +108,28 @@ class Keyman:
         """Wrap input() making testing support of py2 and py3 easier."""
         return input(text)
 
-    @staticmethod
-    def user_password():
+    def user_password(self):
         """Wrap getpass to simplify testing."""
-        return getpass.getpass()
+        password = None
+        if self.config.password_cache:
+            self.log.debug('Password cache enabled')
+            try:
+                keyring.get_keyring()
+                password = keyring.get_password('aws_okta_keyman',
+                                                self.config.username)
+            except keyring.errors.InitError:
+                msg = 'Password cache enabled but no keyring available.'
+                self.log.warning(msg)
+                password = getpass.getpass()
+
+            if self.config.password_reset or password is None:
+                self.log.debug('Password not in cache or reset requested')
+                password = getpass.getpass()
+                keyring.set_password('aws_okta_keyman', self.config.username,
+                                     password)
+        else:
+            password = getpass.getpass()
+        return password
 
     @staticmethod
     def generate_template(data, header_map):
@@ -267,6 +286,12 @@ class Keyman:
             self.log.fatal('Invalid Username ({user}) or Password'.format(
                 user=self.config.username
             ))
+            if self.config.password_cache:
+                msg = (
+                    'Password cache is in use; use option -R to reset the '
+                    'cached password with a new value'
+                )
+                self.log.warning(msg)
             sys.exit(1)
         except okta.PasscodeRequired as err:
             self.log.warning(
