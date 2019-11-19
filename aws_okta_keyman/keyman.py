@@ -26,8 +26,8 @@ import traceback
 import xml
 from builtins import input
 
+import colorlog
 import keyring
-import rainbow_logging_handler
 import requests
 
 from aws_okta_keyman import aws, okta, okta_saml
@@ -96,9 +96,11 @@ class Keyman:
         """Return back a pretty color-coded logger."""
         logger = logging.getLogger()
         logger.setLevel(logging.INFO)
-        handler = rainbow_logging_handler.RainbowLoggingHandler(sys.stdout)
-        fmt = '%(asctime)-10s (%(levelname)s) %(message)s'
-        formatter = logging.Formatter(fmt)
+        handler = colorlog.StreamHandler()
+        fmt = (
+            '%(asctime)-8s (%(bold)s%(log_color)s%(levelname)s%(reset)s) '
+            '%(message)s')
+        formatter = colorlog.ColoredFormatter(fmt, datefmt='%H:%M:%S')
         handler.setFormatter(formatter)
         logger.addHandler(handler)
         return logger
