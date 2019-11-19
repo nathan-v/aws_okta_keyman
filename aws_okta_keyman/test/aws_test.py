@@ -50,7 +50,6 @@ class MockResponse:
 
 
 class TestCredentials(unittest.TestCase):
-    _multiprocess_can_split_ = True
 
     @mock.patch('aws_okta_keyman.aws.os.chmod')
     @mock.patch('aws_okta_keyman.aws.open')
@@ -256,6 +255,36 @@ class TestSession(unittest.TestCase):
 
         with self.assertRaises(aws.MultipleRoles):
             session.assume_role()
+
+    @mock.patch('aws_okta_keyman.aws.Session._write')
+    def test_assume_role_preset(self, mock_write):
+        mock_write.return_value = None
+        assertion = mock.Mock()
+        assertion.roles.return_value = [{'role': '', 'principle': ''}]
+        session = aws.Session('BogusAssertion')
+        session.role = 0
+        session.roles = [{'role': '', 'principle': ''}]
+        session.assertion = assertion
+        sts = {'Credentials':
+               {'AccessKeyId':     'AKI',
+                'SecretAccessKey': 'squirrel',
+                'SessionToken':    'token',
+                'Expiration':      'never'
+                }}
+        session.sts = mock.Mock()
+        session.sts.assume_role_with_saml.return_value = sts
+
+        ret = session.assume_role()
+
+        self.assertEqual(None, ret)
+        self.assertEqual('AKI', session.creds['AccessKeyId'])
+        self.assertEqual('squirrel', session.creds['SecretAccessKey'])
+        self.assertEqual('token', session.creds['SessionToken'])
+        self.assertEqual('never', session.creds['Expiration'])
+        # Verify _write is called correctly
+        mock_write.assert_has_calls([
+            mock.call()
+        ])
 
     def test_available_roles(self):
         roles = [{'role': '::::1:role/role'},

@@ -17,6 +17,7 @@ import os
 import sys
 
 from setuptools import Command, find_packages, setup
+from setuptools.command.test import test as TestCommand
 
 from aws_okta_keyman.metadata import __desc__, __version__
 
@@ -79,6 +80,25 @@ class PyflakesCommand(Command):
             sys.exit("ERROR: Pyflakes failed with exit code {}".format(val))
 
 
+class PyTest(TestCommand):
+    user_options = [('pytest-args=', 'a', "Arguments to pass into py.test")]
+
+    def initialize_options(self):
+        TestCommand.initialize_options(self)
+        self.pytest_args = ['--cov-report=term', '--cov=aws_okta_keyman']
+
+    def finalize_options(self):
+        TestCommand.finalize_options(self)
+        self.test_args = []
+        self.test_suite = True
+
+    def run_tests(self):
+        import pytest
+
+        errno = pytest.main(self.pytest_args)
+        sys.exit(errno)
+
+
 setup(
     name=PACKAGE,
     version=__version__,
@@ -92,9 +112,9 @@ setup(
     license='Apache License, Version 2.0',
     keywords='AWS, Okta, Keys, Auth, Authentication, MFA, Duo, CLI, API',
     packages=find_packages(),
-    test_suite='nose.collector',
+    test_suite='pytest',
     tests_require=open("{}/test_requirements.txt".format(DIR)).readlines(),
-    setup_requires=['nose>=1.3.7'],
+    setup_requires=['pytest-runner'],
     install_requires=open("{}/requirements.txt".format(DIR)).readlines(),
     entry_points={
         'console_scripts': [
@@ -119,11 +139,12 @@ setup(
         'Natural Language :: English',
         'Environment :: Console'
     ],
-    python_requires='>=2.7.4, >=3.5.*, <4',
+    python_requires='>=2.7.4, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, <4',
     platforms=['posix', 'nt'],
     cmdclass={
         'pycodestyle': PycodestyleCommand,
         'pyflakes': PyflakesCommand,
+        'test': PyTest,
     },
     zip_safe=True,
 )

@@ -15,7 +15,6 @@ else:
 
 
 class ConfigTest(unittest.TestCase):
-    _multiprocess_can_split_ = True
 
     @mock.patch('aws_okta_keyman.config.sys.exit')
     @mock.patch('aws_okta_keyman.config.Config.interactive_config')

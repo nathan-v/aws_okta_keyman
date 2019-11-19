@@ -12,3 +12,5 @@ build/
 htmlcov/
 __pycache__
 .eggs/
+.tox/
+.python-version

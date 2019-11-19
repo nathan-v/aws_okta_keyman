@@ -50,7 +50,6 @@ class MockResponse:
 
 
 class TestDuo(unittest.TestCase):
-    _multiprocess_can_split_ = True
 
     def setup_for_trigger_duo(self, factor):
         self.duo_test = duo.Duo(DETAILS, 'token', factor)

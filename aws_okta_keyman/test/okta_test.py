@@ -208,7 +208,6 @@ class MockResponse:
 
 
 class OktaTest(unittest.TestCase):
-    _multiprocess_can_split_ = True
 
     def test_init_blank_inputs(self):
         with self.assertRaises(okta.EmptyInput):
