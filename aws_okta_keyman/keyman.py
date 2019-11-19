@@ -389,7 +389,7 @@ class Keyman:
                 if retries > 5:
                     self.log.fatal('Too many connection errors')
                     return 3
-                continue
+                continue  # pragma: no cover
             except (okta.UnknownError, aws.InvalidSaml):
                 self.log.error('API response invalid. Retrying...')
                 time.sleep(1)
@@ -397,7 +397,7 @@ class Keyman:
                 if retries > 2:
                     self.log.fatal('SAML failure. Please reauthenticate.')
                     return 1
-                continue
+                continue  # pragma: no cover
             except okta.ReauthNeeded as err:
                 msg = 'Application-level MFA present; re-authenticating Okta'
                 self.log.warning(msg)

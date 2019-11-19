@@ -41,7 +41,6 @@ class MockResponse:
 
 
 class OktaSAMLTest(unittest.TestCase):
-    _multiprocess_can_split_ = True
 
     def test_assertion(self):
         okta_saml = OktaSaml('org', 'user', 'password')

@@ -1,5 +1,7 @@
 [report]
-omit = */test/*
+omit =
+  */test/*
+  */__init__.py
 show_missing = True
 
 exclude_lines =

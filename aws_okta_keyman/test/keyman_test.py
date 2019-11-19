@@ -19,7 +19,6 @@ else:
 
 
 class KeymanTest(unittest.TestCase):
-    _multiprocess_can_split_ = True
 
     def test_setup_logging(self):
         # Simple execution test - make sure that the logger code executes and
