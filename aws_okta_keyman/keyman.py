@@ -338,10 +338,8 @@ class Keyman:
         with a list to pick from
         """
         self.log.warning('Multiple AWS roles found; please select one')
-        roles, multiple_accounts = session.available_roles()
-        if multiple_accounts:
-            roles = session.account_ids_to_names(roles)
-        header = [{'account': 'Account'}, {'role': 'Role'}]
+        roles = session.available_roles()
+        header = [{'account': 'Account'}, {'role_name': 'Role'}]
         self.role = self.selector_menu(roles, header)
         session.role = self.role
 

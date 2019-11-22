@@ -210,9 +210,9 @@ class TestSession(unittest.TestCase):
     def test_assume_role(self, mock_write):
         mock_write.return_value = None
         assertion = mock.Mock()
-        assertion.roles.return_value = [{'role': '', 'principle': ''}]
+        assertion.roles.return_value = [{'arn': '', 'principle': ''}]
         session = aws.Session('BogusAssertion')
-        session.roles = [{'role': '', 'principle': ''}]
+        session.roles = [{'arn': '', 'principle': ''}]
         session.assertion = assertion
         sts = {'Credentials':
                {'AccessKeyId':     'AKI',
@@ -239,8 +239,8 @@ class TestSession(unittest.TestCase):
     def test_assume_role_multiple(self, mock_write):
         mock_write.return_value = None
         assertion = mock.Mock()
-        roles = [{'role': '1', 'principle': ''},
-                 {'role': '2', 'principle': ''}]
+        roles = [{'arn': '1', 'principle': ''},
+                 {'arn': '2', 'principle': ''}]
         assertion.roles.return_value = roles
         session = aws.Session('BogusAssertion')
         session.assertion = assertion
@@ -260,10 +260,10 @@ class TestSession(unittest.TestCase):
     def test_assume_role_preset(self, mock_write):
         mock_write.return_value = None
         assertion = mock.Mock()
-        assertion.roles.return_value = [{'role': '', 'principle': ''}]
+        assertion.roles.return_value = [{'arn': '', 'principle': ''}]
         session = aws.Session('BogusAssertion')
         session.role = 0
-        session.roles = [{'role': '', 'principle': ''}]
+        session.roles = [{'arn': '', 'principle': ''}]
         session.assertion = assertion
         sts = {'Credentials':
                {'AccessKeyId':     'AKI',
@@ -287,14 +287,17 @@ class TestSession(unittest.TestCase):
         ])
 
     def test_available_roles(self):
-        roles = [{'role': '::::1:role/role'},
-                 {'role': '::::1:role/role'}]
+        roles = [{'role': '::::1:role/role', 'principle': ''},
+                 {'role': '::::1:role/role', 'principle': ''}]
         session = aws.Session('BogusAssertion')
-        session.roles = roles
+        session.assertion = mock.MagicMock()
+        session.assertion.roles.return_value = roles
         expected = [
-            {'account': '1', 'role': 'role'},
-            {'account': '1', 'role': 'role'}
-            ], False
+            {'account': '1', 'role_name': 'role',
+             'principle': '', 'arn': '::::1:role/role'},
+            {'account': '1', 'role_name': 'role',
+             'principle': '', 'arn': '::::1:role/role'}
+            ]
 
         result = session.available_roles()
 
@@ -302,14 +305,23 @@ class TestSession(unittest.TestCase):
         self.assertEqual(expected, result)
 
     def test_available_roles_multiple_accounts(self):
-        roles = [{'role': '::::1:role/role'},
-                 {'role': '::::2:role/role'}]
+        roles = [{'role': '::::1:role/role', 'principle': ''},
+                 {'role': '::::2:role/role', 'principle': ''}]
+        roles_full = [{'account': '1', 'role_name': 'role',
+                       'arn': '::::1:role/role', 'principle': ''},
+                      {'account': '2', 'role_name': 'role',
+                       'arn': '::::2:role/role', 'principle': ''}]
         session = aws.Session('BogusAssertion')
-        session.roles = roles
+        session.assertion = mock.MagicMock()
+        session.assertion.roles.return_value = roles
+        session.account_ids_to_names = mock.MagicMock()
+        session.account_ids_to_names.return_value = roles_full
         expected = [
-            {'account': '1', 'role': 'role'},
-            {'account': '2', 'role': 'role'}
-            ], True
+            {'account': '1', 'role_name': 'role',
+             'principle': '', 'arn': '::::1:role/role'},
+            {'account': '2', 'role_name': 'role',
+             'principle': '', 'arn': '::::2:role/role'}
+            ]
 
         result = session.available_roles()
 
