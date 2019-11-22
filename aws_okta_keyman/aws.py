@@ -142,8 +142,8 @@ class Session(object):
             'SessionToken': None,
             'Expiration': None}
         self.session_token = None
-        self.roles = self.assertion.roles()
         self.role = role
+        self.available_roles()
 
     @property
     def is_valid(self):
@@ -176,17 +176,26 @@ class Session(object):
         multiple_accounts = False
         first_account = ''
         formatted_roles = []
-        for role in self.roles:
+        for role in self.assertion.roles():
             account = role['role'].split(':')[4]
-            role = role['role'].split(':')[5].split('/')[1]
-            formatted_roles.append(
-                {'account': account, 'role': role})
+            role_name = role['role'].split(':')[5].split('/')[1]
+            formatted_roles.append({
+                'account': account,
+                'role_name': role_name,
+                'arn': role['role'],
+                'principle': role['principle']
+            })
             if first_account == '':
                 first_account = account
             elif first_account != account:
                 multiple_accounts = True
 
-        return formatted_roles, multiple_accounts
+        if multiple_accounts:
+            formatted_roles = self.account_ids_to_names(formatted_roles)
+
+        self.roles = sorted(formatted_roles,
+                            key=lambda k: (k['account'], k['role_name']))
+        return self.roles
 
     def assume_role(self):
         """Use the SAML Assertion to actually get the credentials.
@@ -200,10 +209,10 @@ class Session(object):
                 raise MultipleRoles
             self.role = 0
 
-        LOG.info('Assuming role: {}'.format(self.roles[self.role]['role']))
+        LOG.info('Assuming role: {}'.format(self.roles[self.role]['arn']))
 
         session = self.sts.assume_role_with_saml(
-            RoleArn=self.roles[self.role]['role'],
+            RoleArn=self.roles[self.role]['arn'],
             PrincipalArn=self.roles[self.role]['principle'],
             SAMLAssertion=self.assertion.encode())
         self.creds = session['Credentials']
@@ -238,7 +247,7 @@ class Session(object):
         for role in roles:
             role['account'] = accounts[role['account']]
         LOG.debug("AWS roles with friendly names: {}".format(accounts))
-        return sorted(roles, key=lambda k: (k['account'], k['role']))
+        return roles
 
     def get_account_name_map(self):
         """ Get the friendly to ID mappings from AWS via hacktastic HTML
