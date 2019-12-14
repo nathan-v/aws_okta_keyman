@@ -351,8 +351,9 @@ class Keyman:
             appid=self.config.appid)
 
         try:
+            self.log.info('Connects to Region {region}'.format(region=self.config.region))
             session = aws.Session(assertion, profile=self.config.name,
-                                  role=self.role)
+                                  role=self.role,region=self.config.region)
 
         except xml.etree.ElementTree.ParseError:
             self.log.error('Could not find any Role in the SAML assertion')

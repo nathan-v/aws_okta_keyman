@@ -48,6 +48,7 @@ class Config:
         self.oktapreview = None
         self.password_cache = None
         self.password_reset = None
+        self.region = None
 
         if len(argv) > 1:
             if argv[1] == 'config':
@@ -228,6 +229,8 @@ class Config:
                                        ' if it has changed or is incorrect.'
                                    ),
                                    default=False)
+        optional_args.add_argument('-re', '--region', type=str, help="Choose Region , required for GovCloud and not mandatory  for Regular AWS ", default='us-east-1')
+
 
     @staticmethod
     def read_yaml(filename, raise_on_error=False):

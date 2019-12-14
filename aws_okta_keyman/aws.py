@@ -114,7 +114,7 @@ class Session(object):
                  assertion,
                  credential_path='~/.aws',
                  profile='default',
-                 region='us-east-1',
+                 region=None,
                  role=None):
         cred_dir = os.path.expanduser(credential_path)
         cred_file = os.path.join(cred_dir, 'credentials')
@@ -127,10 +127,9 @@ class Session(object):
                 dir=cred_dir))
             os.makedirs(cred_dir)
 
-        self.sts = boto3.client('sts')
-
         self.profile = profile
         self.region = region
+        self.sts = boto3.client('sts', region_name=self.region)
 
         self.assertion = SamlAssertion(assertion)
         self.writer = Credentials(cred_file)
