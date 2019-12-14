@@ -48,7 +48,7 @@ class Config:
         self.oktapreview = None
         self.password_cache = None
         self.password_reset = None
-        self.region = None
+        self.region = 'us-east-1'
 
         if len(argv) > 1:
             if argv[1] == 'config':

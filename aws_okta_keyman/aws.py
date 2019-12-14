@@ -114,7 +114,7 @@ class Session(object):
                  assertion,
                  credential_path='~/.aws',
                  profile='default',
-                 region=None,
+                 region='us-east-1',
                  role=None):
         cred_dir = os.path.expanduser(credential_path)
         cred_file = os.path.join(cred_dir, 'credentials')
