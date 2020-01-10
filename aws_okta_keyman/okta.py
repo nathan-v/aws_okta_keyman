@@ -181,12 +181,13 @@ class Okta(object):
         """
         if len(passcode) > 6 or len(passcode) < 5:
             LOG.error('Passcodes must be 5 or 6 digits')
-            return
+            return None
 
         valid = self.send_user_response(fid, state_token, passcode, 'passCode')
         if valid:
             self.set_token(valid)
             return True
+        return None
 
     def validate_answer(self, fid, state_token, answer):
         """Validate an Okta user with Question-based MFA.
@@ -206,12 +207,13 @@ class Okta(object):
         """
         if not answer:
             LOG.error('Answer cannot be blank')
-            return
+            return None
 
         valid = self.send_user_response(fid, state_token, answer, 'answer')
         if valid:
             self.set_token(valid)
             return True
+        return None
 
     def send_user_response(self, fid, state_token, user_response, resp_type):
         """Call Okta with a factor response and verify it.
@@ -450,6 +452,7 @@ class Okta(object):
             return True
 
         self.handle_response_factors(response_factors, ret['stateToken'])
+        return None
 
     def handle_push_factors(self, factors, state_token):
         """Handle  any push-type factors.
@@ -547,9 +550,9 @@ class Okta(object):
                     if i['appName'] == 'amazon_aws'}
 
         accounts = []
-        for k, v in aws_list.items():
-            appid = v.split("/", 5)[5]
-            accounts.append({'name': k, 'appid': appid})
+        for key, val in aws_list.items():
+            appid = val.split("/", 5)[5]
+            accounts.append({'name': key, 'appid': appid})
         return accounts
 
     def mfa_callback(self, auth, verification, state_token):

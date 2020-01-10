@@ -48,6 +48,9 @@ class Config:
         self.oktapreview = None
         self.password_cache = None
         self.password_reset = None
+        self.command = None
+        self.screen = None
+        self.region = None
 
         if len(argv) > 1:
             if argv[1] == 'config':
@@ -64,6 +67,9 @@ class Config:
             err = ("The parameter org must be provided in the config file "
                    "or as an argument")
             raise ValueError(err)
+
+        if self.region is None:
+            self.region = 'us-east-1'
 
         if self.username is None:
             user = getpass.getuser()
@@ -166,13 +172,14 @@ class Config:
     @staticmethod
     def optional_args(optional_args):
         """Define the always-optional arguments."""
-        optional_args.add_argument('-u', '--username', type=str, help=(
-                                   'Okta Login Name - either '
-                                   'bob@foobar.com, or just bob works too,'
-                                   ' depending on your organization '
-                                   'settings. Will use the current user if not'
-                                   'specified.'
-                                   )),
+        optional_args.add_argument('-u', '--username', type=str,
+                                   help=(
+                                     'Okta Login Name - either '
+                                     'bob@foobar.com, or just bob works too,'
+                                     ' depending on your organization '
+                                     'settings. Will use the current user if '
+                                     'not specified.'
+                                   ))
         optional_args.add_argument('-a', '--appid', type=str, help=(
                                    'The "redirect link" Application ID  - '
                                    'this can be found by mousing over the '
@@ -228,6 +235,24 @@ class Config:
                                        ' if it has changed or is incorrect.'
                                    ),
                                    default=False)
+        optional_args.add_argument('-C', '--command', type=str,
+                                   help=(
+                                        'Command to run with the requested '
+                                        'AWS keys provided as environment '
+                                        'variables.'
+                                    ))
+        optional_args.add_argument('-s', '--screen', action='store_true',
+                                   help=(
+                                       'Print the retrieved key '
+                                       'only and do not write to the AWS '
+                                       'credentials file.'
+                                   ),
+                                   default=False)
+        optional_args.add_argument('-re', '--region', type=str,
+                                   help=(
+                                       'AWS region to use for calls. '
+                                       'Required for GovCloud.'
+                                   ))
 
     @staticmethod
     def read_yaml(filename, raise_on_error=False):
@@ -274,6 +299,12 @@ class Config:
 
         LOG.debug("YAML being saved: {}".format(config_out))
 
+        file_folder = os.path.dirname(os.path.abspath(file_path))
+        if not os.path.exists(file_folder):
+            LOG.debug("Creating missin config file folder : {}".format(
+                file_folder))
+            os.makedirs(file_folder)
+
         with open(file_path, 'w') as outfile:
             yaml.safe_dump(config_out, outfile, default_flow_style=False)
 
@@ -281,7 +312,7 @@ class Config:
     def clean_config_for_write(config):
         """Remove args we don't want to save to a config file."""
         ignore = ['name', 'appid', 'argv', 'writepath', 'config', 'debug',
-                  'oktapreview', 'password_reset']
+                  'oktapreview', 'password_reset', 'command']
         for var in ignore:
             del config[var]
 
@@ -293,7 +324,7 @@ class Config:
     @staticmethod
     def user_input(text):
         """Wrap input() making testing support of py2 and py3 easier."""
-        return input(text)
+        return input(text).strip()
 
     def interactive_config(self):
         """ Runs an interactive configuration to make it simpler to create

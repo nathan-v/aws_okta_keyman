@@ -127,11 +127,9 @@ class Session(object):
                 dir=cred_dir))
             os.makedirs(cred_dir)
 
-        self.sts = boto3.client('sts')
-
         self.profile = profile
         self.region = region
-
+        self.sts = boto3.client('sts', region_name=self.region)
         self.assertion = SamlAssertion(assertion)
         self.writer = Credentials(cred_file)
 
@@ -197,7 +195,7 @@ class Session(object):
                             key=lambda k: (k['account'], k['role_name']))
         return self.roles
 
-    def assume_role(self):
+    def assume_role(self, print_only=False):
         """Use the SAML Assertion to actually get the credentials.
 
         Uses the supplied (one time use!) SAML Assertion to go out to Amazon
@@ -216,7 +214,11 @@ class Session(object):
             PrincipalArn=self.roles[self.role]['principle'],
             SAMLAssertion=self.assertion.encode())
         self.creds = session['Credentials']
-        self._write()
+
+        if print_only:
+            self._print_creds()
+        else:
+            self._write()
 
     def _write(self):
         """Write out our secrets to the Credentials object."""
@@ -228,6 +230,30 @@ class Session(object):
             time=datetime.datetime.utcnow()))
         LOG.info('Session expires at {time} ⏳'.format(
             time=self.creds['Expiration']))
+
+    def _print_creds(self):
+        """ Print out the retrieved credentials to the screen
+        """
+        cred_str = "AWS_ACCESS_KEY_ID = {}\n".format(self.creds['AccessKeyId'])
+        cred_str = "{}AWS_SECRET_ACCESS_KEY = {}\n".format(
+            cred_str, self.creds['SecretAccessKey'])
+        cred_str = "{}AWS_SESSION_TOKEN = {}".format(
+            cred_str, self.creds['SessionToken'])
+        LOG.info("AWS Credentials: \n\n\n{}\n\n".format(cred_str))
+
+    def export_creds_to_var_string(self):
+        """ Export the current credentials as environment vaiables
+        """
+        var_string = (
+            "export AWS_ACCESS_KEY_ID={}; "
+            "export AWS_SECRET_ACCESS_KEY={}; "
+            "export AWS_SESSION_TOKEN={};"
+        ).format(
+            self.creds['AccessKeyId'],
+            self.creds['SecretAccessKey'],
+            self.creds['SessionToken']
+        )
+        return var_string
 
     def account_ids_to_names(self, roles):
         """Turn account IDs into user-friendly names
