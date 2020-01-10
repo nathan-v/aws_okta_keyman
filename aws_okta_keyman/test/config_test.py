@@ -497,6 +497,25 @@ class ConfigTest(unittest.TestCase):
 
         m.assert_has_calls([mock.call(expected_path, 'w')])
 
+    @mock.patch('aws_okta_keyman.config.os')
+    def test_write_config_path_create_when_missing(self, os_mock):
+        config = Config(['aws_okta_keyman.py'])
+        config.clean_config_for_write = mock.MagicMock()
+        config.clean_config_for_write.return_value = {}
+        config.read_yaml = mock.MagicMock()
+        config.read_yaml.return_value = {}
+        folderpath = '/home/user/.config/'
+        os_mock.path.dirname.return_value = folderpath
+        os_mock.path.exists.return_value = False
+
+        m = mock.mock_open()
+        with mock.patch('aws_okta_keyman.config.open', m):
+            config.write_config()
+
+        os_mock.assert_has_calls([
+            mock.call.makedirs(folderpath)
+        ])
+
     def test_clean_config_for_write(self):
         config_in = {
             'name': 'foo',
@@ -508,7 +527,8 @@ class ConfigTest(unittest.TestCase):
             'oktapreview': 'foo',
             'accounts': None,
             'shouldstillbehere': 'woohoo',
-            'password_reset': True
+            'password_reset': True,
+            'command': None
         }
         config_out = {
             'shouldstillbehere': 'woohoo'
@@ -531,7 +551,8 @@ class ConfigTest(unittest.TestCase):
             'oktapreview': 'foo',
             'accounts': accounts,
             'shouldstillbehere': 'woohoo',
-            'password_reset': True
+            'password_reset': True,
+            'command': None
         }
         config_out = {
             'accounts': accounts,
@@ -542,7 +563,7 @@ class ConfigTest(unittest.TestCase):
 
     @mock.patch('aws_okta_keyman.config.input')
     def test_user_input(self, input_mock):
-        input_mock.return_value = 'test'
+        input_mock.return_value = ' test '
         self.assertEqual('test', Config.user_input('input test'))
 
     @mock.patch('aws_okta_keyman.config.getpass')

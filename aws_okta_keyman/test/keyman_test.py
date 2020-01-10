@@ -125,7 +125,7 @@ class KeymanTest(unittest.TestCase):
 
     @mock.patch('aws_okta_keyman.keyman.input')
     def test_user_input(self, input_mock):
-        input_mock.return_value = 'test'
+        input_mock.return_value = ' test '
 
         self.assertEqual('test', Keyman.user_input('input test'))
 
@@ -600,7 +600,8 @@ class KeymanTest(unittest.TestCase):
             mock.call.get_assertion(appid=mock.ANY)
         ])
         aws_mock.assert_has_calls([
-            mock.call.Session('assertion', profile=mock.ANY, role=None)
+            mock.call.Session('assertion', profile=mock.ANY, role=None,
+                              region=mock.ANY)
         ])
 
     @mock.patch('aws_okta_keyman.keyman.Config')
@@ -628,13 +629,15 @@ class KeymanTest(unittest.TestCase):
         config_mock().reup = False
         keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
         keyman.start_session = mock.MagicMock()
+        keyman.wrap_up = mock.MagicMock()
 
         keyman.aws_auth_loop()
 
         keyman.start_session.assert_has_calls([
             mock.call(),
-            mock.call().assume_role()
+            mock.call().assume_role(mock.ANY)
         ])
+        assert keyman.wrap_up.called
 
     @mock.patch('time.sleep', return_value=None)
     @mock.patch('aws_okta_keyman.keyman.Config')
@@ -671,6 +674,7 @@ class KeymanTest(unittest.TestCase):
     @mock.patch('aws_okta_keyman.keyman.Config')
     def test_aws_auth_loop_multirole(self, config_mock):
         config_mock().reup = False
+        config_mock().screen = False
         keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
         session_instance = mock.MagicMock()
         session_instance.assume_role.side_effect = aws.MultipleRoles
@@ -682,8 +686,8 @@ class KeymanTest(unittest.TestCase):
             keyman.aws_auth_loop()
 
         session_instance.assume_role.assert_has_calls([
-            mock.call(),
-            mock.call(),
+            mock.call(False),
+            mock.call(False),
         ])
         keyman.handle_multiple_roles.assert_has_calls([
             mock.call(mock.ANY)
@@ -735,3 +739,32 @@ class KeymanTest(unittest.TestCase):
             keyman.aws_auth_loop()
 
         assert keyman.start_session.called
+
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_wrap_up_no_command(self, config_mock):
+        config_mock().command = None
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
+        keyman.log = mock.MagicMock()
+
+        keyman.wrap_up(None)
+
+        keyman.log.assert_has_calls([
+            mock.call.info('All done! 👍')
+        ])
+
+    @mock.patch('aws_okta_keyman.keyman.os')
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_wrap_up_with_command(self, config_mock, os_mock):
+        config_mock().command = 'echo w00t'
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
+        fake_session = mock.MagicMock()
+        fake_session.export_creds_to_var_string.return_value = 'foo'
+
+        keyman.wrap_up(fake_session)
+
+        fake_session.assert_has_calls([
+            mock.call.export_creds_to_var_string()
+        ])
+        os_mock.assert_has_calls([
+            mock.call.system('foo echo w00t')
+        ])

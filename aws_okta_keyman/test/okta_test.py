@@ -649,6 +649,16 @@ class OktaTest(unittest.TestCase):
                       'token')
         ])
 
+    def test_handle_mfa_response_returns_none(self):
+        client = okta.Okta('organization', 'username', 'password')
+        client.handle_push_factors = mock.MagicMock()
+        client.handle_push_factors.return_value = False
+        client.handle_response_factors = mock.MagicMock()
+
+        ret = client.handle_mfa_response(MFA_CHALLENGE_SMS_OTP)
+
+        self.assertEqual(ret, None)
+
     def test_handle_mfa_response_unsupported(self):
         client = okta.Okta('organization', 'username', 'password')
         client.handle_push_factors = mock.MagicMock()

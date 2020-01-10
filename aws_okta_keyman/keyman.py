@@ -20,6 +20,7 @@ from __future__ import unicode_literals
 
 import getpass
 import logging
+import os
 import sys
 import time
 import traceback
@@ -108,7 +109,7 @@ class Keyman:
     @staticmethod
     def user_input(text):
         """Wrap input() making testing support of py2 and py3 easier."""
-        return input(text)
+        return input(text).strip()
 
     def user_password(self):
         """Wrap getpass to simplify testing."""
@@ -351,8 +352,10 @@ class Keyman:
             appid=self.config.appid)
 
         try:
+            self.log.info("Starting AWS session for {}".format(
+                self.config.region))
             session = aws.Session(assertion, profile=self.config.name,
-                                  role=self.role)
+                                  role=self.role, region=self.config.region)
 
         except xml.etree.ElementTree.ParseError:
             self.log.error('Could not find any Role in the SAML assertion')
@@ -377,11 +380,11 @@ class Keyman:
 
             try:
                 session = self.start_session()
-                session.assume_role()
+                session.assume_role(self.config.screen)
 
             except aws.MultipleRoles:
                 self.handle_multiple_roles(session)
-                session.assume_role()
+                session.assume_role(self.config.screen)
             except requests.exceptions.ConnectionError:
                 self.log.warning('Connection error... will retry')
                 time.sleep(5)
@@ -404,10 +407,23 @@ class Keyman:
                 self.auth_okta(state_token=err.state_token)
                 continue
 
-            # If we're not running in re-up mode, once we have the assertion
-            # and creds, go ahead and quit.
             if not self.config.reup:
-                self.log.info('All done! 👍')
-                return None
+                return self.wrap_up(session)
 
             self.log.info('Reup enabled, sleeping... 💤')
+
+    def wrap_up(self, session):
+        """ Execute any final steps when we're not in reup mode
+
+        Args:
+        session: aws.session object
+        """
+        if self.config.command:
+            command_string = "{} {}".format(
+                session.export_creds_to_var_string(),
+                self.config.command
+            )
+            self.log.info("Running requested command...\n\n")
+            os.system(command_string)
+        else:
+            self.log.info('All done! 👍')

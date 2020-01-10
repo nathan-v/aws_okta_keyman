@@ -302,6 +302,17 @@ class TestDuo(unittest.TestCase):
         with self.assertRaises(Exception):
             duo_test.do_redirect('url', 'sid')
 
+    def test_do_redirect_missing_cookie(self):
+        duo_test = duo.Duo(DETAILS, 'token')
+        duo_test.session = mock.MagicMock()
+        json_ok = {'response': {'crumbs': 'yum'}, 'stat': 'OK'}
+        headers = {'Location': 'https://someurl/foo?sid=somesid'}
+        duo_test.session.post.return_value = MockResponse(
+            headers, 200, json_ok)
+        ret = duo_test.do_redirect('url', 'sid')
+
+        self.assertEqual(ret, None)
+
 
 class TestQuietHandler(unittest.TestCase):
     # noinspection PyArgumentList

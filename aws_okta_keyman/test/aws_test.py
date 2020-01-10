@@ -123,6 +123,8 @@ class TestSession(unittest.TestCase):
         self.mock_saml = self.patcher.start()
         self.fake_assertion = mock.MagicMock(name='FakeAssertion')
         self.mock_saml.return_value = self.fake_assertion
+        self.botopatch = mock.patch('aws_okta_keyman.aws.boto3')
+        self.mock_boto = self.botopatch.start()
 
     @mock.patch('os.path.expanduser')
     @mock.patch('os.makedirs')
@@ -285,6 +287,57 @@ class TestSession(unittest.TestCase):
         mock_write.assert_has_calls([
             mock.call()
         ])
+
+    @mock.patch('aws_okta_keyman.aws.Session._print_creds')
+    @mock.patch('aws_okta_keyman.aws.Session._write')
+    def test_assume_role_print(self, mock_write, mock_print):
+        assertion = mock.Mock()
+        assertion.roles.return_value = [{'arn': '', 'principle': ''}]
+        session = aws.Session('BogusAssertion')
+        session.role = 0
+        session.roles = [{'arn': '', 'principle': ''}]
+        session.assertion = assertion
+        sts = {'Credentials':
+               {'AccessKeyId':     'AKI',
+                'SecretAccessKey': 'squirrel',
+                'SessionToken':    'token',
+                'Expiration':      'never'
+                }}
+        session.sts = mock.Mock()
+        session.sts.assume_role_with_saml.return_value = sts
+
+        session.assume_role(print_only=True)
+
+        assert not mock_write.called
+        assert mock_print.called
+
+    @mock.patch('aws_okta_keyman.aws.LOG')
+    def test_print_creds(self, log_mock):
+        session = aws.Session('BogusAssertion')
+        expected = (
+            'AWS Credentials: \n\n\n'
+            'AWS_ACCESS_KEY_ID = None\n'
+            'AWS_SECRET_ACCESS_KEY = None\n'
+            'AWS_SESSION_TOKEN = None\n\n'
+        )
+
+        session._print_creds()
+
+        log_mock.assert_has_calls([
+            mock.call.info(expected)
+        ])
+
+    def test_export_creds_to_var_string(self):
+        session = aws.Session('BogusAssertion')
+        expected = (
+            'export AWS_ACCESS_KEY_ID=None; '
+            'export AWS_SECRET_ACCESS_KEY=None; '
+            'export AWS_SESSION_TOKEN=None;'
+        )
+
+        ret = session.export_creds_to_var_string()
+
+        self.assertEqual(ret, expected)
 
     def test_available_roles(self):
         roles = [{'role': '::::1:role/role', 'principle': ''},

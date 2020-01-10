@@ -273,3 +273,4 @@ class Duo:
 
         if 'cookie' in result['response']:
             return result['response']['cookie']
+        return None
