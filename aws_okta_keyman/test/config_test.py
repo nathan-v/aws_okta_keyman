@@ -16,6 +16,23 @@ else:
 
 class ConfigTest(unittest.TestCase):
 
+    def test_full_app_url(self):
+        config = Config(['aws_okta_keyman.py'])
+        config.org = 'example'
+        config.appid = 'some/thing'
+
+        ret = config.full_app_url()
+        self.assertEqual(ret, 'https://example.okta.com/some/thing')
+
+    def test_full_app_url_preview(self):
+        config = Config(['aws_okta_keyman.py'])
+        config.org = 'example'
+        config.appid = 'some/thing'
+        config.oktapreview = True
+
+        ret = config.full_app_url()
+        self.assertEqual(ret, 'https://example.oktapreview.com/some/thing')
+
     @mock.patch('aws_okta_keyman.config.sys.exit')
     @mock.patch('aws_okta_keyman.config.Config.interactive_config')
     def test_start_interactive_config(self, int_mock, exit_mock):
@@ -49,7 +66,6 @@ class ConfigTest(unittest.TestCase):
 
     def test_validate_missing_org(self):
         config = Config(['aws_okta_keyman.py'])
-        config.accounts = [{'appid': 'A123'}]
         config.username = 'user@example.com'
         with self.assertRaises(ValueError):
             config.validate()
@@ -58,7 +74,6 @@ class ConfigTest(unittest.TestCase):
     def test_validate_automatic_username_from_none(self, getpass_mock):
         getpass_mock.getuser.return_value = 'user'
         config = Config(['aws_okta_keyman.py'])
-        config.accounts = [{'appid': 'A123'}]
         config.org = 'example'
         config.validate()
         self.assertEqual(config.username, 'user')
@@ -83,6 +98,22 @@ class ConfigTest(unittest.TestCase):
         config.username = 'automatic-username@example.com'
         config.validate()
         self.assertEqual(config.username, 'user@example.com')
+
+    def test_validate_short_duration(self):
+        config = Config(['aws_okta_keyman.py'])
+        config.org = 'example'
+        config.duration = 1
+
+        with self.assertRaises(ValueError):
+            config.validate()
+
+    def test_validate_long_duration(self):
+        config = Config(['aws_okta_keyman.py'])
+        config.org = 'example'
+        config.duration = 100000000
+
+        with self.assertRaises(ValueError):
+            config.validate()
 
     @mock.patch('aws_okta_keyman.config.Config.validate')
     @mock.patch('aws_okta_keyman.config.Config.parse_args')

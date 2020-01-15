@@ -4,6 +4,8 @@ import datetime
 import sys
 import unittest
 
+import botocore
+
 from aws_okta_keyman import aws
 
 if sys.version_info[0] < 3:  # Python 2
@@ -236,6 +238,13 @@ class TestSession(unittest.TestCase):
         mock_write.assert_has_calls([
             mock.call()
         ])
+        session.sts.assert_has_calls([
+            mock.call.assume_role_with_saml(
+                RoleArn='',
+                PrincipalArn='',
+                SAMLAssertion=mock.ANY,
+                DurationSeconds=3600)
+        ])
 
     @mock.patch('aws_okta_keyman.aws.Session._write')
     def test_assume_role_multiple(self, mock_write):
@@ -311,6 +320,45 @@ class TestSession(unittest.TestCase):
         assert not mock_write.called
         assert mock_print.called
 
+    @mock.patch('aws_okta_keyman.aws.Session._write')
+    def test_assume_role_duration_rejected(self, mock_write):
+        mock_write.return_value = None
+        assertion = mock.Mock()
+        assertion.roles.return_value = [{'arn': '', 'principle': ''}]
+        session = aws.Session('BogusAssertion')
+        session.duration = 1000000
+        session.roles = [{'arn': '', 'principle': ''}]
+        session.assertion = assertion
+        sts = {'Credentials':
+               {'AccessKeyId':     'AKI',
+                'SecretAccessKey': 'squirrel',
+                'SessionToken':    'token',
+                'Expiration':      'never'
+                }}
+        session.sts = mock.Mock()
+        err_mock = mock.MagicMock()
+        err = botocore.exceptions.ClientError(err_mock, err_mock)
+        session.sts.assume_role_with_saml.side_effect = [err, sts]
+
+        session.assume_role()
+
+        self.assertEqual('AKI', session.creds['AccessKeyId'])
+        self.assertEqual('squirrel', session.creds['SecretAccessKey'])
+        self.assertEqual('token', session.creds['SessionToken'])
+        self.assertEqual('never', session.creds['Expiration'])
+        session.sts.assert_has_calls([
+            mock.call.assume_role_with_saml(
+                RoleArn='',
+                PrincipalArn='',
+                SAMLAssertion=mock.ANY,
+                DurationSeconds=1000000),
+            mock.call.assume_role_with_saml(
+                RoleArn='',
+                PrincipalArn='',
+                SAMLAssertion=mock.ANY,
+                DurationSeconds=3600),
+        ])
+
     @mock.patch('aws_okta_keyman.aws.LOG')
     def test_print_creds(self, log_mock):
         session = aws.Session('BogusAssertion')
@@ -325,6 +373,38 @@ class TestSession(unittest.TestCase):
 
         log_mock.assert_has_calls([
             mock.call.info(expected)
+        ])
+
+    @mock.patch('aws_okta_keyman.aws.requests')
+    def test_generate_aws_console_url(self, requests_mock):
+        session = aws.Session('BogusAssertion')
+        session.duration = 3600
+        session.creds = {'AccessKeyId':     'AKI',
+                         'SecretAccessKey': 'squirrel',
+                         'SessionToken':    'token',
+                         'Expiration':      'never'
+                         }
+        resp_mock = mock.MagicMock()
+        resp_mock.json.return_value = {'SigninToken': 'baz'}
+        requests_mock.get.return_value = resp_mock
+
+        issuer = 'https://ex.okta.com/foo/bar'
+        ret = session.generate_aws_console_url(issuer)
+
+        expected = (
+            "https://signin.aws.amazon.com/federation?Action=login&Issuer="
+            "https://ex.okta.com/foo/bar&Destination="
+            "https%3A//console.aws.amazon.com/&SigninToken=baz")
+        self.assertEqual(ret, expected)
+        # mock.ANY required for the session due to Python 3.5 behavior
+        requests_mock.assert_has_calls([
+            mock.call.get(
+                'https://signin.aws.amazon.com/federation',
+                params={
+                    'Action': 'getSigninToken',
+                    'SessionDuration': 3600,
+                    'Session': mock.ANY}),
+            mock.call.get().json()
         ])
 
     def test_export_creds_to_var_string(self):

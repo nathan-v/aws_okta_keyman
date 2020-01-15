@@ -4,7 +4,7 @@
 
 [![Requirements Status](https://requires.io/github/nathan-v/aws_okta_keyman/requirements.svg?branch=master)](https://requires.io/github/nathan-v/aws_okta_keyman/requirements/?branch=master) [![Known Vulnerabilities](https://snyk.io/test/github/nathan-v/aws_okta_keyman/badge.svg)](https://snyk.io/test/github/nathan-v/aws_okta_keyman)
 
-![CircleCI](https://img.shields.io/circleci/build/gh/nathan-v/aws_okta_keyman)
+[![CircleCI](https://img.shields.io/circleci/build/gh/nathan-v/aws_okta_keyman)](https://circleci.com/gh/nathan-v/aws_okta_keyman/tree/master)
 
 # AWS Okta Keyman
 
@@ -114,6 +114,68 @@ aws_okta_keyman -P    # Enable the password cache
 aws_okta_keyman -R    # Reset the cached password in case of mistaken entry or password change
 ```
 
+### Command Wrapping
+
+Command wrapping provides a simple way to execute any command you would like directly from
+Keyman where the AWS access key environment variables will be provided when starting the
+command. An example of this is provided here:
+
+```text
+$ aws_okta_keyman --command "echo \$AWS_ACCESS_KEY_ID"
+14:06:48 (INFO) AWS Okta Keyman 🔐 v0.7.5
+
+----snip----
+
+14:07:17   (INFO) Assuming role: arn:aws:iam::1234567890:role/Admin
+14:07:17   (INFO) Wrote profile "default" to /home/nathan/.aws/credentials 💾
+14:07:17   (INFO) Current time is 2020-01-10 22:07:17.027964
+14:07:17   (INFO) Session expires at 2020-01-10 23:07:16+00:00 ⏳
+14:07:17   (INFO) Running requested command...
+
+
+AXXXXXXXXXXXXXXXXXXX
+
+```
+
+### Screen-only Key Output
+
+Screen-only output for cases were the key needs to be copied
+elsewhere for use. This makes using the temporary keys in other apps simpler and easier.
+They will not be written out to the AWS credentials file when this option is specified.
+
+```text
+$ aws_okta_keyman --screen
+14:13:27 (INFO) AWS Okta Keyman 🔐 v0.7.5
+
+----snip----
+
+
+14:14:04   (INFO) Assuming role: arn:aws:iam::1234567890:role/Admin
+14:14:04   (INFO) AWS Credentials: 
+
+
+AWS_ACCESS_KEY_ID = AXXXXXXXXXXXXXXXXXXX
+AWS_SECRET_ACCESS_KEY = xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+AWS_SESSION_TOKEN = xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+
+14:14:04 (INFO) All done! 👍
+```
+
+### GovCloud Support
+AWS Okta Keyman now works with AWS GovCloud. Use the `--region` command-line option
+to specify the AWS region to get the keys from.
+
+### Preferred Key Duration
+You can set a key lifetime other than the default 1 hour by setting `--duration` when calling Keyman.
+If AWS rejects the request for a longer duration the default 1 hour will be used instead. You can request
+key durations from a minimum of 15 minutes (900 seconds) or up to 12 hours (43200 seconds). These
+limits are enforced by AWS and are not a limitation of Keyman.
+
+### AWS Console Logins
+AWS Console login links can optionally be generated when yo request keys with Keyman. 
+The console login link will be output on the screen for you to use. Just provide the `--console`
+parameter when running Keyman.
 
 ### Config file .. predefined settings for you or your org
 
@@ -196,9 +258,12 @@ App ID:
 14:21:58   (INFO) Config file written. Please rerun Keyman
 ```
 
-### Python Versions
+## Python Versions
 
-Python 2.7.4+ and Python 3.5.0+ are supported
+Python 2.7.4+ and Python 3.5.0+ are supported.
+
+Support for older Python versions will be maintained as long as is reasonable.
+Before support is removed a reminder/warning will be provided.
 
 ## Usage
 
@@ -271,7 +336,7 @@ Selection: 0
 ```
 
 
-### Okta Setup
+## Okta Setup
 Before you can use this tool, your Okta administrator needs to set up
 [Amazon/Okta integration][okta_aws_guide] using SAML roles.
 
