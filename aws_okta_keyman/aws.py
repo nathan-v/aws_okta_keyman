@@ -25,12 +25,14 @@ from __future__ import unicode_literals
 
 import configparser
 import datetime
+import json
 import logging
 import os
 import re
 from builtins import str
 
 import boto3
+import botocore
 import bs4
 import requests
 
@@ -115,7 +117,8 @@ class Session(object):
                  credential_path='~/.aws',
                  profile='default',
                  region='us-east-1',
-                 role=None):
+                 role=None,
+                 session_duration=3600):
         cred_dir = os.path.expanduser(credential_path)
         cred_file = os.path.join(cred_dir, 'credentials')
 
@@ -141,6 +144,7 @@ class Session(object):
             'Expiration': None}
         self.session_token = None
         self.role = role
+        self.duration = session_duration
         self.available_roles()
 
     @property
@@ -209,10 +213,23 @@ class Session(object):
 
         LOG.info('Assuming role: {}'.format(self.roles[self.role]['arn']))
 
-        session = self.sts.assume_role_with_saml(
-            RoleArn=self.roles[self.role]['arn'],
-            PrincipalArn=self.roles[self.role]['principle'],
-            SAMLAssertion=self.assertion.encode())
+        try:
+            session = self.sts.assume_role_with_saml(
+                RoleArn=self.roles[self.role]['arn'],
+                PrincipalArn=self.roles[self.role]['principle'],
+                SAMLAssertion=self.assertion.encode(),
+                DurationSeconds=self.duration)
+        except botocore.exceptions.ClientError:
+            # Try again with the default duration
+            msg = ("Error assuming session with duration "
+                   "{}. Retrying with 3600.".format(self.duration))
+            LOG.warning(msg)
+            session = self.sts.assume_role_with_saml(
+                RoleArn=self.roles[self.role]['arn'],
+                PrincipalArn=self.roles[self.role]['principle'],
+                SAMLAssertion=self.assertion.encode(),
+                DurationSeconds=3600)
+
         self.creds = session['Credentials']
 
         if print_only:
@@ -240,6 +257,31 @@ class Session(object):
         cred_str = "{}AWS_SESSION_TOKEN = {}".format(
             cred_str, self.creds['SessionToken'])
         LOG.info("AWS Credentials: \n\n\n{}\n\n".format(cred_str))
+
+    def generate_aws_console_url(self, issuer):
+        """ Generate a URL for logging into the AWS console with the current
+        session key
+
+        Returns: string URL for console login
+        """
+        creds = {'sessionId': self.creds['AccessKeyId'],
+                 'sessionKey': self.creds['SecretAccessKey'],
+                 'sessionToken': self.creds['SessionToken']}
+
+        params = {'Action': 'getSigninToken',
+                  'SessionDuration': self.duration,
+                  'Session': json.dumps(creds)}
+
+        token_url = "https://signin.aws.amazon.com/federation"
+        resp = requests.get(token_url, params=params)
+        token = resp.json()['SigninToken']
+
+        console_url = 'https%3A//console.aws.amazon.com/'
+        params = ("?Action=login&Issuer={}&Destination={}"
+                  "&SigninToken={}").format(issuer, console_url, token)
+
+        url = "https://signin.aws.amazon.com/federation{}".format(params)
+        return url
 
     def export_creds_to_var_string(self):
         """ Export the current credentials as environment vaiables

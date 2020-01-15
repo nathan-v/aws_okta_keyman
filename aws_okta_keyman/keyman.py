@@ -355,7 +355,8 @@ class Keyman:
             self.log.info("Starting AWS session for {}".format(
                 self.config.region))
             session = aws.Session(assertion, profile=self.config.name,
-                                  role=self.role, region=self.config.region)
+                                  role=self.role, region=self.config.region,
+                                  session_duration=self.config.duration)
 
         except xml.etree.ElementTree.ParseError:
             self.log.error('Could not find any Role in the SAML assertion')
@@ -425,5 +426,10 @@ class Keyman:
             )
             self.log.info("Running requested command...\n\n")
             os.system(command_string)
+        elif self.config.console:
+            app_url = self.config.full_app_url()
+            url = session.generate_aws_console_url(app_url)
+            self.log.info("AWS Console URL: {}".format(url))
+
         else:
             self.log.info('All done! 👍')

@@ -601,7 +601,7 @@ class KeymanTest(unittest.TestCase):
         ])
         aws_mock.assert_has_calls([
             mock.call.Session('assertion', profile=mock.ANY, role=None,
-                              region=mock.ANY)
+                              region=mock.ANY, session_duration=mock.ANY)
         ])
 
     @mock.patch('aws_okta_keyman.keyman.Config')
@@ -741,8 +741,9 @@ class KeymanTest(unittest.TestCase):
         assert keyman.start_session.called
 
     @mock.patch('aws_okta_keyman.keyman.Config')
-    def test_wrap_up_no_command(self, config_mock):
+    def test_wrap_up_noop(self, config_mock):
         config_mock().command = None
+        config_mock().console = None
         keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
         keyman.log = mock.MagicMock()
 
@@ -767,4 +768,21 @@ class KeymanTest(unittest.TestCase):
         ])
         os_mock.assert_has_calls([
             mock.call.system('foo echo w00t')
+        ])
+
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_wrap_up_with_console(self, config_mock):
+        config_mock().command = None
+        config_mock().console = True
+        config_mock().full_app_url.return_value = 'url'
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
+        session = mock.MagicMock()
+
+        keyman.wrap_up(session)
+
+        session.assert_has_calls([
+            mock.call.generate_aws_console_url('url')
+        ])
+        config_mock.assert_has_calls([
+            mock.call().full_app_url()
         ])

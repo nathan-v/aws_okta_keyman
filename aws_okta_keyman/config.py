@@ -51,11 +51,24 @@ class Config:
         self.command = None
         self.screen = None
         self.region = None
+        self.duration = None
+        self.console = None
 
         if len(argv) > 1:
             if argv[1] == 'config':
                 self.interactive_config()
                 sys.exit(0)
+
+    def full_app_url(self):
+        """ Retrieve the full Okta app URL. """
+        okta_domain = 'okta.com'
+        if self.oktapreview:
+            okta_domain = 'oktapreview.com'
+        full_url = "https://{}.{}/{}".format(
+            self.org,
+            okta_domain,
+            self.appid)
+        return full_url
 
     def set_appid_from_account_id(self, account_id):
         """Take an account ID (list index) and sets the appid based on that."""
@@ -67,6 +80,12 @@ class Config:
             err = ("The parameter org must be provided in the config file "
                    "or as an argument")
             raise ValueError(err)
+        duration = getattr(self, 'duration')
+        if duration:
+            if duration > 43200 or duration < 900:
+                err = ("The parameter duration must be between 900 and 43200 "
+                       "(15m to 12h).")
+                raise ValueError(err)
 
         if self.region is None:
             self.region = 'us-east-1'
@@ -253,6 +272,21 @@ class Config:
                                        'AWS region to use for calls. '
                                        'Required for GovCloud.'
                                    ))
+        optional_args.add_argument('-du', '--duration', type=int,
+                                   help=(
+                                       'AWS API Key duration to request. '
+                                       'If the supplied value is rejected '
+                                       'by AWS the default of 3600s (one '
+                                       'hour) will be used.'
+                                   ),
+                                   default=3600)
+        optional_args.add_argument('-co', '--console',
+                                   action='store_true', help=(
+                                       'Output AWS Console URLs to log in '
+                                       'and use the web conle with the '
+                                       'selected role..'
+                                   ),
+                                   default=False)
 
     @staticmethod
     def read_yaml(filename, raise_on_error=False):
