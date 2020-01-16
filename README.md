@@ -1,4 +1,5 @@
 [![Apache](https://img.shields.io/badge/license-Apache-blue.svg)](https://github.com/nathan-v/aws_okta_keyman/blob/master/LICENSE.txt) [![Python versions](https://img.shields.io/pypi/pyversions/aws-okta-keyman.svg)](https://pypi.python.org/pypi/aws-okta-keyman/) [![PyPI version](https://badge.fury.io/py/aws-okta-keyman.svg)](https://badge.fury.io/py/aws-okta-keyman) ![PyPI - Status](https://img.shields.io/pypi/status/aws_okta_keyman) [![Downloads](http://pepy.tech/badge/aws-okta-keyman)](http://pepy.tech/count/aws-okta-keyman)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fnathan-v%2Faws_okta_keyman.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fnathan-v%2Faws_okta_keyman?ref=badge_shield)
 
 [![CC GPA](https://codeclimate.com/github/nathan-v/aws_okta_keyman/badges/gpa.svg)](https://codeclimate.com/github/nathan-v/aws_okta_keyman) [![CC Issues](https://codeclimate.com/github/nathan-v/aws_okta_keyman/badges/issue_count.svg)](https://codeclimate.com/github/nathan-v/aws_okta_keyman) [![Coverage Status](https://codecov.io/gh/nathan-v/aws_okta_keyman/branch/master/graph/badge.svg)](https://codecov.io/gh/nathan-v/aws_okta_keyman) ![GitHub issues](https://img.shields.io/github/issues-raw/nathan-v/aws_okta_keyman)
 
@@ -380,3 +381,6 @@ license is in the LICENSE_MIT.txt file.
 [aws_saml]: http://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRoleWithSAML.html
 [duo_auth]: https://duo.com/
 [keyring]: https://github.com/jaraco/keyring
+
+
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fnathan-v%2Faws_okta_keyman.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fnathan-v%2Faws_okta_keyman?ref=badge_large)
