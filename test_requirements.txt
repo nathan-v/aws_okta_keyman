@@ -1,6 +1,6 @@
 pytest
 pytest-cov
-coverage
+coverage==5.0.3
 mock
 pycodestyle
 pyflakes
