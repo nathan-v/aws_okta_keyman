@@ -1,7 +1,7 @@
 pytest
 pytest-cov
 coverage
-mock
+mock==4.0.0
 pycodestyle
 pyflakes
 codecov
