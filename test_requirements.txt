@@ -4,4 +4,4 @@ coverage
 mock
 pycodestyle
 pyflakes
-codecov
+codecov==2.0.16
