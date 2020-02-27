@@ -21,12 +21,15 @@ from __future__ import unicode_literals
 import getpass
 import logging
 import os
+import platform
+import subprocess
 import sys
 import time
 import traceback
 import xml
 from builtins import input
 
+import botocore
 import colorlog
 import keyring
 import requests
@@ -35,6 +38,10 @@ from aws_okta_keyman import aws, okta, okta_saml
 from aws_okta_keyman.config import Config
 from aws_okta_keyman.metadata import __desc__, __version__
 from aws_okta_keyman.duo import PasscodeRequired, FactorRequired
+
+
+class NoAWSAccounts(Exception):
+    """Some Expected Return Was Received."""
 
 
 class Keyman:
@@ -56,6 +63,9 @@ class Keyman:
 
     def main(self):
         """Execute primary logic path."""
+        if self.config.update is True:
+            self.update(__version__)
+            sys.exit(0)
         try:
             # If there's no appid try to select from accounts in config file
             self.handle_appid_selection()
@@ -79,6 +89,10 @@ class Keyman:
             result = self.aws_auth_loop()
             if result is not None:
                 sys.exit(result)
+
+        except NoAWSAccounts:
+            self.log.fatal('No configured or assigned AWS apps found 🛑')
+            sys.exit(6)
 
         except KeyboardInterrupt:
             # Allow users to exit cleanly at any time.
@@ -195,6 +209,36 @@ class Keyman:
             sel = "[{}]".format(index).ljust(selector_width)
             print("{} {}".format(sel, str(template.format(**item))))
 
+    def update(self, this_version):
+        self.log.info('Checking AWS Okta Keyman current version on Pypi')
+        pip_version = self.get_pip_version()
+        if pip_version > this_version:
+            self.log.info("New version {}. Updaing..".format(pip_version))
+            os = platform.system()
+            if os == "Darwin":
+                result = subprocess.check_call([
+                    'brew', 'upgrade', 'aws_okta_keyman'
+                ])
+            else:
+                result = subprocess.check_call([
+                    sys.executable, "-m", "pip", "install",
+                    '--upgrade', 'aws-okta-keyman'
+                ])
+            if result == 0:
+                self.log.info('AWS Okta Keyman updated.')
+            else:
+                msg = 'Error updating Keyman. Please try updating manually.'
+                self.log.warning(msg)
+        else:
+            self.log.info('Keyman is up to date')
+
+    @staticmethod
+    def get_pip_version():
+        url = 'https://pypi.org/pypi/aws-okta-keyman/json'
+        resp = requests.get(url).json()
+        pip_version = resp['info']['version']
+        return pip_version
+
     def selector_menu(self, data, header_map):
         """ Presents a menu/table to the user from which they can make a
         selection using the index number of their choice
@@ -229,6 +273,9 @@ class Keyman:
                 accts = self.config.accounts
             else:
                 return
+
+            if len(accts) < 1:
+                raise NoAWSAccounts()
 
             acct_selection = 0
             if len(accts) > 1:
@@ -407,6 +454,14 @@ class Keyman:
                 self.log.warning(msg)
                 self.auth_okta(state_token=err.state_token)
                 continue
+            except botocore.exceptions.ProfileNotFound as err:
+                msg = (
+                    'There is likely an issue with your AWS_DEFAULT_PROFILE '
+                    'environment variable. An error occurred attempting to '
+                    'load the AWS profile specified. '
+                    'Error message: {}').format(err)
+                self.log.fatal(msg)
+                return 4
 
             if not self.config.reup:
                 return self.wrap_up(session)

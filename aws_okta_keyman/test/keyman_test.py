@@ -7,8 +7,10 @@ import unittest
 import xml
 
 from aws_okta_keyman import aws, okta, duo
-from aws_okta_keyman.keyman import Keyman
+from aws_okta_keyman.keyman import Keyman, NoAWSAccounts
+from aws_okta_keyman.metadata import __version__
 
+import botocore
 import keyring
 import requests
 
@@ -113,6 +115,20 @@ class KeymanTest(unittest.TestCase):
     def test_main_aws_auth_error(self, _config_mock):
         keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
         keyman.handle_appid_selection = mock.MagicMock()
+        keyman.handle_appid_selection.side_effect = NoAWSAccounts()
+        keyman.user_password = mock.MagicMock()
+        keyman.user_password.return_value = 'foo'
+        keyman.init_okta = mock.MagicMock()
+        keyman.auth_okta = mock.MagicMock()
+        keyman.aws_auth_loop = mock.MagicMock()
+
+        with self.assertRaises(SystemExit):
+            keyman.main()
+
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_main_no_aws_accounts(self, _config_mock):
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
+        keyman.handle_appid_selection = mock.MagicMock()
         keyman.user_password = mock.MagicMock()
         keyman.user_password.return_value = 'foo'
         keyman.init_okta = mock.MagicMock()
@@ -122,6 +138,23 @@ class KeymanTest(unittest.TestCase):
 
         with self.assertRaises(SystemExit):
             keyman.main()
+
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_main_update(self, config_mock):
+        config_mock().update = True
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
+        keyman.update = mock.MagicMock()
+        keyman.handle_appid_selection = mock.MagicMock()
+        keyman.user_password = mock.MagicMock()
+        keyman.user_password.return_value = 'foo'
+        keyman.init_okta = mock.MagicMock()
+        keyman.auth_okta = mock.MagicMock()
+        keyman.aws_auth_loop = mock.MagicMock()
+
+        with self.assertRaises(SystemExit):
+            keyman.main()
+
+        keyman.update.assert_has_calls([mock.call(__version__)])
 
     @mock.patch('aws_okta_keyman.keyman.input')
     def test_user_input(self, input_mock):
@@ -234,6 +267,87 @@ class KeymanTest(unittest.TestCase):
             mock.call.write('\n'),
             mock.call.write('[1] Soundgarden  Superunknown  '),
             mock.call.write('\n')
+        ])
+
+    def test_update_current(self):
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar'])
+        keyman.get_pip_version = mock.MagicMock()
+        keyman.get_pip_version.return_value = __version__
+        keyman.log = mock.MagicMock()
+
+        keyman.update(__version__)
+
+        keyman.log.info.assert_has_calls([
+            mock.call('Keyman is up to date')
+        ])
+
+    @mock.patch('aws_okta_keyman.keyman.platform')
+    @mock.patch('aws_okta_keyman.keyman.subprocess')
+    def test_update_old_pip(self, subp_mock, plat_mock):
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar'])
+        keyman.get_pip_version = mock.MagicMock()
+        keyman.get_pip_version.return_value = '100000'
+        keyman.log = mock.MagicMock()
+        plat_mock.system.return_value = "Linux"
+        subp_mock.check_call.return_value = 0
+
+        keyman.update(__version__)
+
+        keyman.log.info.assert_has_calls([
+            mock.call('New version 100000. Updaing..')
+        ])
+        subp_mock.assert_has_calls([
+            mock.call.check_call([
+                mock.ANY, '-m', 'pip', 'install',
+                '--upgrade', 'aws-okta-keyman'
+            ])
+        ])
+
+    @mock.patch('aws_okta_keyman.keyman.platform')
+    @mock.patch('aws_okta_keyman.keyman.subprocess')
+    def test_update_old_brew(self, subp_mock, plat_mock):
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar'])
+        keyman.get_pip_version = mock.MagicMock()
+        keyman.get_pip_version.return_value = '100000'
+        keyman.log = mock.MagicMock()
+        plat_mock.system.return_value = "Darwin"
+        subp_mock.check_call.return_value = 0
+
+        keyman.update(__version__)
+
+        keyman.log.info.assert_has_calls([
+            mock.call('New version 100000. Updaing..')
+        ])
+        subp_mock.assert_has_calls([
+            mock.call.check_call([u'brew', u'upgrade', u'aws_okta_keyman'])
+        ])
+
+    @mock.patch('aws_okta_keyman.keyman.subprocess')
+    def test_update_old_failed(self, subp_mock):
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar'])
+        keyman.get_pip_version = mock.MagicMock()
+        keyman.get_pip_version.return_value = '100000'
+        keyman.log = mock.MagicMock()
+        subp_mock.check_call.return_value = 1
+
+        keyman.update(__version__)
+
+        keyman.log.warning.assert_has_calls([
+            mock.call('Error updating Keyman. Please try updating manually.')
+        ])
+
+    @mock.patch('aws_okta_keyman.keyman.requests')
+    def test_get_pip_version(self, requests_mock):
+        resp = {'info': {'version': '1.0'}}
+        resp_mock = mock.MagicMock()
+        resp_mock.json.return_value = resp
+        requests_mock.get.return_value = resp_mock
+
+        ret = Keyman.get_pip_version()
+
+        self.assertEqual(ret, '1.0')
+        requests_mock.assert_has_calls([
+            mock.call.get(u'https://pypi.org/pypi/aws-okta-keyman/json')
         ])
 
     @mock.patch('aws_okta_keyman.keyman.Config')
@@ -352,6 +466,20 @@ class KeymanTest(unittest.TestCase):
         keyman.handle_appid_selection(okta_ready=True)
 
         assert keyman.okta_client.get_aws_apps.called
+
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_handle_appid_selection_from_okta_no_aws(self, _config_mock):
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar'])
+        keyman.config.accounts = None
+        keyman.config.appid = None
+        keyman.selector_menu = mock.MagicMock(name='selector_menu')
+        keyman.selector_menu.return_value = 0
+        keyman.config.set_appid_from_account_id = mock.MagicMock()
+        keyman.okta_client = mock.MagicMock()
+        keyman.okta_client.get_aws_apps.return_value = []
+
+        with self.assertRaises(NoAWSAccounts):
+            keyman.handle_appid_selection(okta_ready=True)
 
     @mock.patch('aws_okta_keyman.keyman.Config')
     def test_handle_duo_factor_selection(self, _config_mock):
@@ -726,6 +854,20 @@ class KeymanTest(unittest.TestCase):
 
         assert keyman.start_session.called
         self.assertEqual(ret, 1)
+
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_aws_auth_loop_profile_error(self, config_mock):
+        config_mock().reup = False
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
+        keyman.start_session = mock.MagicMock()
+        profile_exc = botocore.exceptions.ProfileNotFound(profile='')
+        keyman.start_session.side_effect = profile_exc
+        keyman.okta_client = mock.MagicMock()
+
+        ret = keyman.aws_auth_loop()
+
+        assert keyman.start_session.called
+        self.assertEqual(ret, 4)
 
     @mock.patch('time.sleep', return_value=None)
     @mock.patch('aws_okta_keyman.keyman.Config')
