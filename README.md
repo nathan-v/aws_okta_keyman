@@ -4,7 +4,7 @@
 
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/nathan-v/aws_okta_keyman) ![GitHub Release Date](https://img.shields.io/github/release-date/nathan-v/aws_okta_keyman) [![PyPI version](https://badge.fury.io/py/aws-okta-keyman.svg)](https://badge.fury.io/py/aws-okta-keyman) ![PyPI - Status](https://img.shields.io/pypi/status/aws_okta_keyman) [![Sourcegraph](https://img.shields.io/badge/view%20on-Sourcegraph-brightgreen.svg?logo=sourcegraph)](https://sourcegraph.com/github.com/nathan-v/aws_okta_keyman)
 
-![CircleCI](https://img.shields.io/circleci/build/gh/nathan-v/aws_okta_keyman/master?label=master&logo=circleci) ![GitHub last commit](https://img.shields.io/github/last-commit/nathan-v/aws_okta_keyman)
+[![CircleCI](https://img.shields.io/circleci/build/gh/nathan-v/aws_okta_keyman/master?label=master&logo=circleci)](https://circleci.com/gh/nathan-v/aws_okta_keyman/tree/master) ![GitHub last commit](https://img.shields.io/github/last-commit/nathan-v/aws_okta_keyman)
 
 # AWS Okta Keyman
 This is a simple command-line tool for logging into Okta and generating
