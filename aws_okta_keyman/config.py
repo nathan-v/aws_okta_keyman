@@ -53,6 +53,7 @@ class Config:
         self.region = None
         self.duration = None
         self.console = None
+        self.update = None
 
         if len(argv) > 1:
             if argv[1] == 'config':
@@ -287,6 +288,13 @@ class Config:
                                        'selected role..'
                                    ),
                                    default=False)
+        optional_args.add_argument('-U', '--update',
+                                   action='store_true', help=(
+                                       'Check installed Keyman version '
+                                       'against latest version in pip and '
+                                       'update if the pip version is newer.'
+                                   ),
+                                   default=False)
 
     @staticmethod
     def read_yaml(filename, raise_on_error=False):
@@ -346,7 +354,7 @@ class Config:
     def clean_config_for_write(config):
         """Remove args we don't want to save to a config file."""
         ignore = ['name', 'appid', 'argv', 'writepath', 'config', 'debug',
-                  'oktapreview', 'password_reset', 'command']
+                  'oktapreview', 'password_reset', 'command', 'update']
         for var in ignore:
             del config[var]
 

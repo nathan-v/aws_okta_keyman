@@ -1,7 +1,7 @@
-pytest
-pytest-cov
-coverage
-mock
-pycodestyle
-pyflakes
-codecov
+pytest>=4.6.0
+pytest-cov>=2.8.0
+coverage==4.5.4
+mock>=3.0.0
+pycodestyle>=2.5.0
+pyflakes>=2.1.0
+codecov>=2.0.0

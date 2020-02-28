@@ -559,7 +559,8 @@ class ConfigTest(unittest.TestCase):
             'accounts': None,
             'shouldstillbehere': 'woohoo',
             'password_reset': True,
-            'command': None
+            'command': None,
+            'update': None
         }
         config_out = {
             'shouldstillbehere': 'woohoo'
@@ -583,7 +584,8 @@ class ConfigTest(unittest.TestCase):
             'accounts': accounts,
             'shouldstillbehere': 'woohoo',
             'password_reset': True,
-            'command': None
+            'command': None,
+            'update': None
         }
         config_out = {
             'accounts': accounts,
