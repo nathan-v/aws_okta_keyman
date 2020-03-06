@@ -109,7 +109,7 @@ class Keyman:
     @staticmethod
     def setup_logging():
         """Return back a pretty color-coded logger."""
-        logger = logging.getLogger()
+        logger = logging.getLogger(__name__)
         handler = colorlog.StreamHandler()
         fmt = (
             '%(asctime)-8s (%(bold)s%(log_color)s%(levelname)s%(reset)s) '
