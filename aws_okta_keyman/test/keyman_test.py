@@ -28,7 +28,7 @@ class KeymanTest(unittest.TestCase):
         # options passed to the logger are valid.
         ret = Keyman.setup_logging()
 
-        self.assertEqual(type(ret), type(logging.getLogger()))
+        self.assertEqual(type(ret), type(logging.getLogger(__name__)))
 
     @mock.patch('aws_okta_keyman.keyman.Config')
     def test_init_blank_args(self, _config_mock):
