@@ -110,7 +110,6 @@ class Keyman:
     def setup_logging():
         """Return back a pretty color-coded logger."""
         logger = logging.getLogger()
-        logger.setLevel(logging.INFO)
         handler = colorlog.StreamHandler()
         fmt = (
             '%(asctime)-8s (%(bold)s%(log_color)s%(levelname)s%(reset)s) '
