@@ -103,7 +103,7 @@ setup(
     name=PACKAGE,
     version=__version__,
     description=__desc__,
-    long_description=open("{}/README.md".format(DIR)).read(),
+    long_description=open("{}/README.md".format(DIR), encoding = "utf-8").read(),
     long_description_content_type='text/markdown',
     author='Nathan V',
     author_email='nathan.v@gmail.com',
