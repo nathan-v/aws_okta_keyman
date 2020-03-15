@@ -15,6 +15,7 @@
 """Setup the package."""
 import os
 import sys
+import io
 
 from setuptools import Command, find_packages, setup
 from setuptools.command.test import test as TestCommand
@@ -103,7 +104,7 @@ setup(
     name=PACKAGE,
     version=__version__,
     description=__desc__,
-    long_description=open("{}/README.md".format(DIR), encoding = "utf-8").read(),
+    long_description=io.open("{}/README.md".format(DIR), encoding='utf-8').read(),
     long_description_content_type='text/markdown',
     author='Nathan V',
     author_email='nathan.v@gmail.com',
