@@ -1,6 +1,6 @@
 pytest>=4.6.0
 pytest-cov>=2.8.0
-coverage==5.0.3
+coverage==5.0.4
 mock>=3.0.0
 pycodestyle>=2.5.0
 pyflakes>=2.1.0
