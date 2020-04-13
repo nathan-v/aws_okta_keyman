@@ -385,11 +385,40 @@ class Keyman:
         """If there's more than one role available from AWS present the user
         with a list to pick from
         """
-        self.log.warning('Multiple AWS roles found; please select one')
+
         roles = session.available_roles()
-        header = [{'account': 'Account'}, {'role_name': 'Role'}]
-        self.role = self.selector_menu(roles, header)
+
+        if self.config.account or self.config.role:
+            roles = list(filter(lambda item: (
+                    (
+                        not self.config.account
+                        or item['account'] == self.config.account
+                    )
+                    and
+                    (
+                        not self.config.role
+                        or item['role_name'] == self.config.role
+                    )
+                ),
+                session.available_roles()
+            ))
+
+        if len(roles) == 0:
+            # if filtering returned nothing fail
+            self.log.fatal('Unable to find a matching account or role')
+            return False
+        elif len(roles) == 1:
+            # if filtering returned a single item,
+            # do not prompt for selection
+            self.role = roles[0]['roleIdx']
+        else:
+            self.log.warning('Multiple AWS roles found; please select one')
+            header = [{'account': 'Account'}, {'role_name': 'Role'}]
+            role_idx = self.selector_menu(roles, header)
+            self.role = roles[role_idx]['roleIdx']
+
         session.role = self.role
+        return True
 
     def start_session(self):
         """Initialize AWS session object."""
@@ -428,11 +457,12 @@ class Keyman:
 
             try:
                 session = self.start_session()
+
+                if not self.handle_multiple_roles(session):
+                    return 1
+
                 session.assume_role(self.config.screen)
 
-            except aws.MultipleRoles:
-                self.handle_multiple_roles(session)
-                session.assume_role(self.config.screen)
             except requests.exceptions.ConnectionError:
                 self.log.warning('Connection error... will retry')
                 time.sleep(5)

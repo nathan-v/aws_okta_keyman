@@ -243,9 +243,11 @@ class ConfigTest(unittest.TestCase):
         argv = [
             'aws_okta_keyman.py',
             '-a', 'app/id',
+            '-ac', 'accountname',
             '-o', 'foobar',
             '-u', 'test',
             '-n', 'profilename',
+            '-ro', 'rolename',
             '-c', 'config_file_path',
             '-w', 'write_file_path',
             '-d', 'push',
@@ -255,9 +257,11 @@ class ConfigTest(unittest.TestCase):
         config.parse_args(main_required=True)
 
         self.assertEqual(config.appid, 'app/id')
+        self.assertEqual(config.account, 'accountname')
         self.assertEqual(config.org, 'foobar')
         self.assertEqual(config.username, 'test')
         self.assertEqual(config.name, 'profilename')
+        self.assertEqual(config.role, 'rolename')
         self.assertEqual(config.config, 'config_file_path')
         self.assertEqual(config.writepath, 'write_file_path')
         self.assertEqual(config.duo_factor, 'push')
@@ -268,10 +272,12 @@ class ConfigTest(unittest.TestCase):
     def test_parse_args_verify_all_parsed_full(self):
         argv = [
             'aws_okta_keyman.py',
+            '--account', 'accountname',
             '--appid', 'app/id',
             '--org', 'foobar',
             '--username', 'test',
             '--name', 'profilename',
+            '--role', 'rolename',
             '--config', 'config_file_path',
             '--writepath', 'write_file_path',
             '--duo_factor', 'push',
@@ -280,10 +286,12 @@ class ConfigTest(unittest.TestCase):
         config = Config(argv)
         config.parse_args(main_required=True)
 
+        self.assertEqual(config.account, 'accountname')
         self.assertEqual(config.appid, 'app/id')
         self.assertEqual(config.org, 'foobar')
         self.assertEqual(config.username, 'test')
         self.assertEqual(config.name, 'profilename')
+        self.assertEqual(config.role, 'rolename')
         self.assertEqual(config.config, 'config_file_path')
         self.assertEqual(config.writepath, 'write_file_path')
         self.assertEqual(config.duo_factor, 'push')

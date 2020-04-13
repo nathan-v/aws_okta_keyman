@@ -700,16 +700,166 @@ class KeymanTest(unittest.TestCase):
         keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
         keyman.selector_menu = mock.MagicMock()
         keyman.selector_menu.return_value = 0
-        roles = ([{}, {}])
+        roles = ([
+          {'account': 'acct1', 'role_name': 'role1', 'roleIdx': 0},
+          {'account': 'acct1', 'role_name': 'role2', 'roleIdx': 1}
+        ])
         mock_session = mock.MagicMock()
         mock_session.available_roles.return_value = roles
+
+        keyman.config.account = None
+        keyman.config.role = None
 
         keyman.handle_multiple_roles(mock_session)
 
         keyman.selector_menu.assert_has_calls([
-            mock.call([{}, {}],
+            mock.call(roles,
                       [{'account': 'Account'}, {'role_name': 'Role'}])
         ])
+        mock_session.assert_has_calls([
+            mock.call.available_roles()
+        ])
+
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_handle_multiple_roles_account_match(self, _config_mock):
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
+        keyman.selector_menu = mock.MagicMock()
+        keyman.selector_menu.return_value = 1
+        roles = ([
+            {'account': 'acct1', 'role_name': 'role1', 'roleIdx': 0},
+            {'account': 'acct1', 'role_name': 'role2', 'roleIdx': 1},
+            {'account': 'acct2', 'role_name': 'role1', 'roleIdx': 2},
+            {'account': 'acct2', 'role_name': 'role2', 'roleIdx': 3}
+        ])
+        mock_session = mock.MagicMock()
+        mock_session.available_roles.return_value = roles
+
+        keyman.config.account = 'acct2'
+        keyman.config.role = None
+
+        assert keyman.handle_multiple_roles(mock_session)
+        # item 1 "selected" from menu translates to role #3
+        assert keyman.role == 3
+
+        keyman.selector_menu.assert_has_calls([
+            mock.call(
+                  ([
+                    {'account': 'acct2', 'role_name': 'role1', 'roleIdx': 2},
+                    {'account': 'acct2', 'role_name': 'role2', 'roleIdx': 3}
+                  ]),
+                  [{'account': 'Account'}, {'role_name': 'Role'}])
+        ])
+
+        mock_session.assert_has_calls([
+            mock.call.available_roles()
+        ])
+
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_handle_multiple_roles_rollname_match(self, _config_mock):
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
+        keyman.selector_menu = mock.MagicMock()
+        keyman.selector_menu.return_value = 0
+        roles = ([
+            {'account': 'acct1', 'role_name': 'role1', 'roleIdx': 0},
+            {'account': 'acct1', 'role_name': 'role2', 'roleIdx': 1},
+            {'account': 'acct2', 'role_name': 'role1', 'roleIdx': 2},
+            {'account': 'acct2', 'role_name': 'role2', 'roleIdx': 3}
+        ])
+        mock_session = mock.MagicMock()
+        mock_session.available_roles.return_value = roles
+
+        keyman.config.account = None
+        keyman.config.role = 'role2'
+
+        assert keyman.handle_multiple_roles(mock_session)
+        # item 0 "selected" from menu translates to role #1
+        assert keyman.role == 1
+
+        keyman.selector_menu.assert_has_calls([
+            mock.call(
+                  ([
+                    {'account': 'acct1', 'role_name': 'role2', 'roleIdx': 1},
+                    {'account': 'acct2', 'role_name': 'role2', 'roleIdx': 3}
+                  ]),
+                  [{'account': 'Account'}, {'role_name': 'Role'}])
+        ])
+
+        mock_session.assert_has_calls([
+            mock.call.available_roles()
+        ])
+
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_handle_multiple_roles_single_role_match(self, _config_mock):
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
+        keyman.selector_menu = mock.MagicMock()
+        keyman.selector_menu.return_value = 0
+        roles = ([
+            {'account': 'acct1', 'role_name': 'role1', 'roleIdx': 0},
+            {'account': 'acct1', 'role_name': 'role2', 'roleIdx': 1},
+            {'account': 'acct2', 'role_name': 'role1', 'roleIdx': 2},
+            {'account': 'acct2', 'role_name': 'role2', 'roleIdx': 3}
+        ])
+        mock_session = mock.MagicMock()
+        mock_session.available_roles.return_value = roles
+
+        keyman.config.account = 'acct1'
+        keyman.config.role = 'role2'
+
+        assert keyman.handle_multiple_roles(mock_session)
+        assert keyman.role == 1
+
+        keyman.selector_menu.assert_not_called()
+
+        mock_session.assert_has_calls([
+            mock.call.available_roles()
+        ])
+
+    # multiple accounts with no matching account
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_handle_multiple_roles_no_match_account(self, _config_mock):
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
+        keyman.selector_menu = mock.MagicMock()
+        keyman.selector_menu.return_value = 0
+        roles = ([
+            {'account': 'acct1', 'role_name': 'role1', 'roleIdx': 0},
+            {'account': 'acct1', 'role_name': 'role2', 'roleIdx': 1},
+            {'account': 'acct2', 'role_name': 'role1', 'roleIdx': 2}
+        ])
+        mock_session = mock.MagicMock()
+        mock_session.available_roles.return_value = roles
+
+        keyman.config.account = 'acct3'
+        keyman.config.role = None
+
+        assert not keyman.handle_multiple_roles(mock_session)
+
+        keyman.selector_menu.assert_not_called()
+
+        mock_session.assert_has_calls([
+            mock.call.available_roles()
+        ])
+
+    # multiple accounts with no matching role
+    @mock.patch('aws_okta_keyman.keyman.Config')
+    def test_handle_multiple_roles_no_match_role(self, _config_mock):
+        keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
+        keyman.selector_menu = mock.MagicMock()
+        keyman.selector_menu.return_value = 0
+        roles = ([
+            {'account': 'acct1', 'role_name': 'role1', 'roleIdx': 0},
+            {'account': 'acct1', 'role_name': 'role2', 'roleIdx': 1},
+            {'account': 'acct2', 'role_name': 'role1', 'roleIdx': 2}
+        ])
+        mock_session = mock.MagicMock()
+        mock_session.available_roles.return_value = roles
+
+        keyman.config.account = 'role3'
+        keyman.config.role = None
+
+        assert not keyman.handle_multiple_roles(mock_session)
+
+        keyman.selector_menu.assert_not_called()
+
         mock_session.assert_has_calls([
             mock.call.available_roles()
         ])
@@ -758,6 +908,8 @@ class KeymanTest(unittest.TestCase):
         keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
         keyman.start_session = mock.MagicMock()
         keyman.wrap_up = mock.MagicMock()
+        keyman.handle_multiple_roles = mock.MagicMock()
+        keyman.handle_multiple_roles.return_value = True
 
         keyman.aws_auth_loop()
 
@@ -766,6 +918,7 @@ class KeymanTest(unittest.TestCase):
             mock.call().assume_role(mock.ANY)
         ])
         assert keyman.wrap_up.called
+        assert keyman.handle_multiple_roles.called
 
     @mock.patch('time.sleep', return_value=None)
     @mock.patch('aws_okta_keyman.keyman.Config')
@@ -791,6 +944,8 @@ class KeymanTest(unittest.TestCase):
         session_instance.is_valid = True
         keyman.start_session = mock.MagicMock()
         keyman.start_session.return_value = session_instance
+        keyman.handle_multiple_roles = mock.MagicMock()
+        keyman.handle_multiple_roles.return_value = True
 
         with self.assertRaises(Exception):
             keyman.aws_auth_loop()
@@ -799,8 +954,10 @@ class KeymanTest(unittest.TestCase):
             mock.call(60)
         ])
 
+        assert keyman.handle_multiple_roles.called
+
     @mock.patch('aws_okta_keyman.keyman.Config')
-    def test_aws_auth_loop_multirole(self, config_mock):
+    def test_aws_auth_loop_multirole_no_match(self, config_mock):
         config_mock().reup = False
         config_mock().screen = False
         keyman = Keyman(['foo', '-o', 'foo', '-u', 'bar', '-a', 'baz'])
@@ -809,17 +966,15 @@ class KeymanTest(unittest.TestCase):
         keyman.start_session = mock.MagicMock()
         keyman.start_session.return_value = session_instance
         keyman.handle_multiple_roles = mock.MagicMock()
+        keyman.handle_multiple_roles.return_value = False
 
-        with self.assertRaises(Exception):
-            keyman.aws_auth_loop()
+        ret = keyman.aws_auth_loop()
 
-        session_instance.assume_role.assert_has_calls([
-            mock.call(False),
-            mock.call(False),
-        ])
         keyman.handle_multiple_roles.assert_has_calls([
             mock.call(mock.ANY)
         ])
+
+        self.assertEqual(ret, 1)
 
     @mock.patch('time.sleep', return_value=None)
     @mock.patch('aws_okta_keyman.keyman.Config')

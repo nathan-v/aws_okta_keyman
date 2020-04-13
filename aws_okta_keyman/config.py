@@ -54,6 +54,8 @@ class Config:
         self.duration = None
         self.console = None
         self.update = None
+        self.account = None
+        self.role = None
 
         if len(argv) > 1:
             if argv[1] == 'config':
@@ -295,6 +297,14 @@ class Config:
                                        'update if the pip version is newer.'
                                    ),
                                    default=False)
+        optional_args.add_argument('-ac', '--account', type=str,
+                                   help=(
+                                       'AWS account if multiple options. '
+                                   )),
+        optional_args.add_argument('-ro', '--role', type=str,
+                                   help=(
+                                       'AWS role if multiple options. '
+                                   ))
 
     @staticmethod
     def read_yaml(filename, raise_on_error=False):
