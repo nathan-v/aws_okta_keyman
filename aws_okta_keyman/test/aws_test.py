@@ -427,9 +427,11 @@ class TestSession(unittest.TestCase):
         session.assertion.roles.return_value = roles
         expected = [
             {'account': '1', 'role_name': 'role',
-             'principle': '', 'arn': '::::1:role/role'},
+             'principle': '', 'arn': '::::1:role/role',
+             'roleIdx': 0},
             {'account': '1', 'role_name': 'role',
-             'principle': '', 'arn': '::::1:role/role'}
+             'principle': '', 'arn': '::::1:role/role',
+             'roleIdx': 1}
             ]
 
         result = session.available_roles()
