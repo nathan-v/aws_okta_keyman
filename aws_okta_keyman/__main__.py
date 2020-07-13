@@ -18,13 +18,25 @@
 
 from __future__ import unicode_literals
 
+import logging
 import sys
+
+import colorlog
 
 from aws_okta_keyman.keyman import Keyman
 
 
 def entry_point():
     """Zero-argument entry point for use with setuptools/distribute."""
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    handler = colorlog.StreamHandler()
+    fmt = (
+        '%(asctime)-8s (%(bold)s%(log_color)s%(levelname)s%(reset)s) '
+        '%(message)s')
+    formatter = colorlog.ColoredFormatter(fmt, datefmt='%H:%M:%S')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
     keyman = Keyman(sys.argv)
     raise SystemExit(keyman.main())
 

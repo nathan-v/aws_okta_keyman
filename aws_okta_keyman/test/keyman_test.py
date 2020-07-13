@@ -22,14 +22,6 @@ else:
 
 class KeymanTest(unittest.TestCase):
 
-    def test_setup_logging(self):
-        # Simple execution test - make sure that the logger code executes and
-        # returns a root logger. No mocks used here, want to ensure that the
-        # options passed to the logger are valid.
-        ret = Keyman.setup_logging()
-
-        self.assertEqual(type(ret), type(logging.getLogger()))
-
     @mock.patch('aws_okta_keyman.keyman.Config')
     def test_init_blank_args(self, _config_mock):
         keyman = Keyman([''])
