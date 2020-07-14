@@ -120,7 +120,7 @@ setup(
     install_requires=open("{}/requirements.txt".format(DIR)).readlines(),
     entry_points={
         'console_scripts': [
-            'aws_okta_keyman = aws_okta_keyman.main:entry_point'
+            'aws_okta_keyman = aws_okta_keyman.__main__:entry_point'
         ],
     },
     classifiers=[
