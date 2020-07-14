@@ -30,7 +30,6 @@ import xml
 from builtins import input
 
 import botocore
-import colorlog
 import keyring
 import requests
 
@@ -38,6 +37,9 @@ from aws_okta_keyman import aws, okta, okta_saml
 from aws_okta_keyman.config import Config
 from aws_okta_keyman.metadata import __desc__, __version__
 from aws_okta_keyman.duo import PasscodeRequired, FactorRequired
+
+
+LOG = logging.getLogger(__name__)
 
 
 class NoAWSAccounts(Exception):
@@ -49,7 +51,7 @@ class Keyman:
 
     def __init__(self, argv):
         self.okta_client = None
-        self.log = self.setup_logging()
+        self.log = LOG
         self.log.info('{} 🔐 v{}'.format(__desc__, __version__))
         self.config = Config(argv)
         self.role = None
@@ -105,20 +107,6 @@ class Keyman:
             self.log.fatal(msg)
             self.log.debug(traceback.format_exc())
             sys.exit(5)
-
-    @staticmethod
-    def setup_logging():
-        """Return back a pretty color-coded logger."""
-        logger = logging.getLogger()
-        logger.setLevel(logging.INFO)
-        handler = colorlog.StreamHandler()
-        fmt = (
-            '%(asctime)-8s (%(bold)s%(log_color)s%(levelname)s%(reset)s) '
-            '%(message)s')
-        formatter = colorlog.ColoredFormatter(fmt, datefmt='%H:%M:%S')
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
-        return logger
 
     @staticmethod
     def user_input(text):
