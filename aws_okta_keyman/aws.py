@@ -197,7 +197,7 @@ class Session(object):
             formatted_roles = self.account_ids_to_names(formatted_roles)
 
         formatted_roles = sorted(formatted_roles,
-                            key=lambda k: (k['account'], k['role_name']))
+                                 key=lambda k: (k['account'], k['role_name']))
 
         # set the role role index after sorting
         i = 0
