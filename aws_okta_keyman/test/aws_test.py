@@ -271,10 +271,15 @@ class TestSession(unittest.TestCase):
     def test_assume_role_preset(self, mock_write):
         mock_write.return_value = None
         assertion = mock.Mock()
-        assertion.roles.return_value = [{'arn': '', 'principle': ''}]
+
+        roles = [{'role': '::::1:role/role1', 'principle': '', 'arn': '1'},
+                 {'role': '::::1:role/role2', 'principle': '', 'arn': '2'},
+                 {'role': '::::1:role/role3', 'principle': '', 'arn': '3'}]
+
+        assertion.roles.return_value = roles
         session = aws.Session('BogusAssertion')
-        session.role = 0
-        session.roles = [{'arn': '', 'principle': ''}]
+        session.role = 1
+        session.roles = roles
         session.assertion = assertion
         sts = {'Credentials':
                {'AccessKeyId':     'AKI',
@@ -295,6 +300,13 @@ class TestSession(unittest.TestCase):
         # Verify _write is called correctly
         mock_write.assert_has_calls([
             mock.call()
+        ])
+        session.sts.assert_has_calls([
+            mock.call.assume_role_with_saml(
+                RoleArn='2',
+                PrincipalArn='',
+                SAMLAssertion=mock.ANY,
+                DurationSeconds=3600)
         ])
 
     @mock.patch('aws_okta_keyman.aws.Session._print_creds')
@@ -420,23 +432,29 @@ class TestSession(unittest.TestCase):
         self.assertEqual(ret, expected)
 
     def test_available_roles(self):
-        roles = [{'role': '::::1:role/role', 'principle': ''},
-                 {'role': '::::1:role/role', 'principle': ''}]
+        roles = [{'role': '::::1:role/role1', 'principle': ''},
+                 {'role': '::::1:role/role3', 'principle': ''},
+                 {'role': '::::1:role/role2', 'principle': ''}]
         session = aws.Session('BogusAssertion')
         session.assertion = mock.MagicMock()
         session.assertion.roles.return_value = roles
-        expected = [
-            {'account': '1', 'role_name': 'role',
-             'principle': '', 'arn': '::::1:role/role',
-             'roleIdx': 0},
-            {'account': '1', 'role_name': 'role',
-             'principle': '', 'arn': '::::1:role/role',
-             'roleIdx': 1}
-            ]
 
         result = session.available_roles()
 
         print(result)
+
+        expected = [
+            {'account': '1', 'role_name': 'role1',
+             'principle': '', 'arn': '::::1:role/role1',
+             'roleIdx': 0},
+            {'account': '1', 'role_name': 'role2',
+             'principle': '', 'arn': '::::1:role/role2',
+             'roleIdx': 1},
+            {'account': '1', 'role_name': 'role3',
+             'principle': '', 'arn': '::::1:role/role3',
+             'roleIdx': 2}
+            ]
+
         self.assertEqual(expected, result)
 
     def test_available_roles_multiple_accounts(self):
@@ -453,9 +471,9 @@ class TestSession(unittest.TestCase):
         session.account_ids_to_names.return_value = roles_full
         expected = [
             {'account': '1', 'role_name': 'role',
-             'principle': '', 'arn': '::::1:role/role'},
+             'principle': '', 'arn': '::::1:role/role', 'roleIdx': 0},
             {'account': '2', 'role_name': 'role',
-             'principle': '', 'arn': '::::2:role/role'}
+             'principle': '', 'arn': '::::2:role/role', 'roleIdx': 1}
             ]
 
         result = session.available_roles()
