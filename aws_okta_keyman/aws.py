@@ -179,7 +179,6 @@ class Session(object):
         multiple_accounts = False
         first_account = ''
         formatted_roles = []
-        i = 0
         for role in self.assertion.roles():
             account = role['role'].split(':')[4]
             role_name = role['role'].split(':')[5].split('/')[1]
@@ -187,20 +186,27 @@ class Session(object):
                 'account': account,
                 'role_name': role_name,
                 'arn': role['role'],
-                'principle': role['principle'],
-                'roleIdx': i
+                'principle': role['principle']
             })
             if first_account == '':
                 first_account = account
             elif first_account != account:
                 multiple_accounts = True
-            i = i + 1
 
         if multiple_accounts:
             formatted_roles = self.account_ids_to_names(formatted_roles)
 
-        self.roles = sorted(formatted_roles,
-                            key=lambda k: (k['account'], k['role_name']))
+        formatted_roles = sorted(formatted_roles,
+                                 key=lambda k: (k['account'], k['role_name']))
+
+        # set the role role index after sorting
+        i = 0
+        for role in formatted_roles:
+            role['roleIdx'] = i
+            i = i + 1
+
+        self.roles = formatted_roles
+
         return self.roles
 
     def assume_role(self, print_only=False):
