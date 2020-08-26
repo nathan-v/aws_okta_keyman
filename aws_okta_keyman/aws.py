@@ -132,7 +132,7 @@ class Session(object):
 
         self.profile = profile
         self.region = region
-        boto3.setup_default_session(profile_name=profile)
+        boto3.setup_default_session()
         self.sts = boto3.client('sts', region_name=self.region)
         self.assertion = SamlAssertion(assertion)
         self.writer = Credentials(cred_file)
