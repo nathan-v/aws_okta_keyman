@@ -318,7 +318,7 @@ class Session(object):
         try:
             accounts = self.get_account_name_map()
         except Exception:
-            msg = ('Error retreiving AWS account name/ID map. '
+            msg = ('Error retrieving AWS account name/ID map. '
                    'Falling back to just account IDs')
             LOG.warning(msg)
             return roles
