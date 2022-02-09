@@ -94,7 +94,8 @@ class Okta(object):
                  oktapreview=False):
         if organization and "https://" not in organization:
             if oktapreview:
-                self.base_url = PREVIEW_BASE_URL.format(organization=organization)
+                url = PREVIEW_BASE_URL.format(organization=organization)
+                self.base_url = url
             else:
                 self.base_url = BASE_URL.format(organization=organization)
         else:
