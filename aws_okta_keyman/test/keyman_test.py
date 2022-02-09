@@ -12,6 +12,7 @@ from aws_okta_keyman.metadata import __version__
 
 import botocore
 import keyring
+import pytest
 import requests
 
 if sys.version_info[0] < 3:  # Python 2

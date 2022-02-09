@@ -187,7 +187,8 @@ class Config:
                                help=(
                                    'Okta Organization Name - ie, if your '
                                    'login URL is https://foobar.okta.com, '
-                                   'enter in foobar here'
+                                   'enter in foobar here or you may use'
+                                   'the complete URL.'
                                ),
                                required=required)
 
@@ -282,11 +283,11 @@ class Config:
                                        'by AWS the default of 3600s (one '
                                        'hour) will be used.'
                                    ),
-                                   default=3600)
+                                   default=None)
         optional_args.add_argument('-co', '--console',
                                    action='store_true', help=(
                                        'Output AWS Console URLs to log in '
-                                       'and use the web conle with the '
+                                       'and use the web console with the '
                                        'selected role..'
                                    ),
                                    default=False)
@@ -353,7 +354,7 @@ class Config:
 
         file_folder = os.path.dirname(os.path.abspath(file_path))
         if not os.path.exists(file_folder):
-            LOG.debug("Creating missin config file folder : {}".format(
+            LOG.debug("Creating missing config file folder : {}".format(
                 file_folder))
             os.makedirs(file_folder)
 

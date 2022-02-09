@@ -35,6 +35,7 @@ workflows:
   version: 2
   test:
     jobs:
+      - test-3.9
       - test-3.8
       - test-3.7
       - test-3.6
@@ -44,7 +45,7 @@ workflows:
 jobs:
   test-2.7:
     docker:
-      - image: circleci/python:2.7
+      - image: cimg/python:2.7
     steps:
       - checkout
       - run: *dbus
@@ -61,19 +62,24 @@ jobs:
       - run: *pycodestyle
       - run: *pyflakes
     docker:
-      - image: circleci/python:3.5
+      - image: cimg/python:3.5
 
   test-3.6:
     <<: *3x-template
     docker:
-      - image: circleci/python:3.6
+      - image: cimg/python:3.6
 
   test-3.7:
     <<: *3x-template
     docker:
-      - image: circleci/python:3.7
+      - image: cimg/python:3.7
 
   test-3.8:
     <<: *3x-template
     docker:
-      - image: circleci/python:3.8
+      - image: cimg/python:3.8
+
+  test-3.9:
+    <<: *3x-template
+    docker:
+      - image: cimg/python:3.9
