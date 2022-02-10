@@ -1,11 +1,12 @@
 dbus: &dbus
   name: dbus
   command: |
-    sudo apt install -y libdbus-1-3 libdbus-1-dev
+    sudo apt install -y libdbus-1-3
 
 dependencies: &dependencies
   name: install dependencies
   command: |
+    pip install -U pip
     python -m venv venv || virtualenv venv
     . venv/bin/activate
     pip install -r requirements.txt
