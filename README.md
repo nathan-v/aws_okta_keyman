@@ -37,10 +37,10 @@ Benefits vs other similar tools:
 * No API keys required; just your Okta username and password
 * No analytics or metrics collection; this tool does _not_ call home in any way
 * Open source distributed as source; you can see what you're running
-* Wide Python version support; works on Python 2.7.4+ and 3.5.0+.
+* Wide Python version support; works on Python 2.7.4+ and 3.5.0+. (v 0.8.x)
 
 ### Optional MFA Authentication
-If you organization or integration requires MFA  we will automatically detect that
+If your organization or integration requires MFA we will automatically detect that
 requirement during authentication and prompt the user to complete the
 Multi Factor Authentication.
 
