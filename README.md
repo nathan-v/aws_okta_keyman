@@ -1,4 +1,4 @@
-[![Apache](https://img.shields.io/badge/license-Apache-blue.svg)](https://github.com/nathan-v/aws_okta_keyman/blob/master/LICENSE.txt) [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fnathan-v%2Faws_okta_keyman.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fnathan-v%2Faws_okta_keyman?ref=badge_shield) [![Python versions](https://img.shields.io/pypi/pyversions/aws-okta-keyman.svg)](https://pypi.python.org/pypi/aws-okta-keyman/) ![PyPI - Implementation](https://img.shields.io/pypi/implementation/aws-okta-keyman) [![Downloads](http://pepy.tech/badge/aws-okta-keyman)](http://pepy.tech/count/aws-okta-keyman)
+[![Apache](https://img.shields.io/badge/license-Apache-blue.svg)](https://github.com/nathan-v/aws_okta_keyman/blob/master/LICENSE.txt) [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fnathan-v%2Faws_okta_keyman.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fnathan-v%2Faws_okta_keyman?ref=badge_shield) [![Python versions](https://img.shields.io/pypi/pyversions/aws-okta-keyman.svg)](https://pypi.python.org/pypi/aws-okta-keyman/) ![PyPI - Implementation](https://img.shields.io/pypi/implementation/aws-okta-keyman) [![Downloads](http://pepy.tech/badge/aws-okta-keyman)](https://pepy.tech/project/aws_okta_keyman)
 
 [![Requirements Status](https://pyup.io/repos/github/nathan-v/aws_okta_keyman/shield.svg?t=1580777582434)](https://pyup.io/repos/github/nathan-v/aws_okta_keyman/) ![Code Climate maintainability](https://img.shields.io/codeclimate/maintainability/nathan-v/aws_okta_keyman)  ![Code Climate issues](https://img.shields.io/codeclimate/issues/nathan-v/aws_okta_keyman) ![Code Climate technical debt](https://img.shields.io/codeclimate/tech-debt/nathan-v/aws_okta_keyman) ![Codecov](https://img.shields.io/codecov/c/gh/nathan-v/aws_okta_keyman) ![Snyk Vulnerabilities for GitHub Repo](https://img.shields.io/snyk/vulnerabilities/github/nathan-v/aws_okta_keyman)
 
@@ -37,10 +37,10 @@ Benefits vs other similar tools:
 * No API keys required; just your Okta username and password
 * No analytics or metrics collection; this tool does _not_ call home in any way
 * Open source distributed as source; you can see what you're running
-* Wide Python version support; works on Python 2.7.4+ and 3.5.0+.
+* Wide Python version support; works on Python 2.7.4+ and 3.5.0+. (v 0.8.x)
 
 ### Optional MFA Authentication
-If you organization or integration requires MFA  we will automatically detect that
+If your organization or integration requires MFA we will automatically detect that
 requirement during authentication and prompt the user to complete the
 Multi Factor Authentication.
 

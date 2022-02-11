@@ -116,7 +116,6 @@ setup(
     packages=find_packages(),
     test_suite='pytest',
     tests_require=open("{}/test_requirements.txt".format(DIR)).readlines(),
-    setup_requires=['pytest-runner'],
     install_requires=open("{}/requirements.txt".format(DIR)).readlines(),
     entry_points={
         'console_scripts': [
@@ -135,6 +134,7 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
         'Operating System :: MacOS :: MacOS X',
         'Operating System :: Microsoft :: Windows',
         'Operating System :: POSIX',

@@ -152,6 +152,18 @@ class TestSession(unittest.TestCase):
 
         exists_mock.assert_has_calls([mock.call('/home/fakeuser')])
 
+    @mock.patch('os.path.expanduser')
+    @mock.patch('os.makedirs')
+    @mock.patch('os.path.exists')
+    def test_init_with_duration(self, exists_mock, _makedirs_mock,
+                                expuser_mock):
+        exists_mock.return_value = True
+        expuser_mock.return_value = '/home/fakeuser'
+
+        aws.Session('BogusAssertion', session_duration=6000)
+
+        exists_mock.assert_has_calls([mock.call('/home/fakeuser')])
+
     def test_is_valid_false(self):
         session = aws.Session('BogusAssertion')
 

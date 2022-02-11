@@ -92,10 +92,14 @@ class Okta(object):
 
     def __init__(self, organization, username, password, duo_factor=None,
                  oktapreview=False):
-        if oktapreview:
-            self.base_url = PREVIEW_BASE_URL.format(organization=organization)
+        if organization and "https://" not in organization:
+            if oktapreview:
+                url = PREVIEW_BASE_URL.format(organization=organization)
+                self.base_url = url
+            else:
+                self.base_url = BASE_URL.format(organization=organization)
         else:
-            self.base_url = BASE_URL.format(organization=organization)
+            self.base_url = organization
 
         LOG.debug('Base URL Set to: {url}'.format(url=self.base_url))
 
@@ -144,7 +148,7 @@ class Okta(object):
     def set_token(self, ret):
         """Parse an authentication response, get a long-lived token, store it
         Parses a SUCCESSFUL authentication response from Okta to get the
-        one time use token, requests a long-lived sessoin token from Okta,  and
+        one time use token, requests a long-lived session token from Okta,  and
         stores the new token.
         Args:
             ret: The response from Okta that we know is successful and contains

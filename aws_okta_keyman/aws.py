@@ -118,7 +118,7 @@ class Session(object):
                  profile='default',
                  region='us-east-1',
                  role=None,
-                 session_duration=3600):
+                 session_duration=None):
         cred_dir = os.path.expanduser(credential_path)
         cred_file = os.path.join(cred_dir, 'credentials')
 
@@ -145,7 +145,10 @@ class Session(object):
             'Expiration': None}
         self.session_token = None
         self.role = role
-        self.duration = session_duration
+        if session_duration:
+            self.duration = session_duration
+        else:
+            self.duration = 3600
         self.available_roles()
 
     @property
@@ -318,7 +321,7 @@ class Session(object):
         try:
             accounts = self.get_account_name_map()
         except Exception:
-            msg = ('Error retreiving AWS account name/ID map. '
+            msg = ('Error retrieving AWS account name/ID map. '
                    'Falling back to just account IDs')
             LOG.warning(msg)
             return roles
