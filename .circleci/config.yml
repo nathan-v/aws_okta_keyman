@@ -1,8 +1,3 @@
-dbus: &dbus
-  name: dbus
-  command: |
-    sudo apt install -y libdbus-1-3 libdbus-1-dev
-
 dependencies: &dependencies
   name: install dependencies
   command: |
@@ -40,33 +35,15 @@ workflows:
       - test-3.8
       - test-3.7
       - test-3.6
-      - test-3.5
-      - test-2.7
 
 jobs:
-  test-2.7:
-    docker:
-      - image: cimg/python:2.7
-    steps:
-      - checkout
-      - run: *dbus
-      - run: *dependencies
-      - run: *tests
-      - run: *pycodestyle
-      - run: *pyflakes
-
-  test-3.5: &3x-template
+  test-3.6: &3x-template
     steps:
       - checkout
       - run: *dependencies
       - run: *tests
       - run: *pycodestyle
       - run: *pyflakes
-    docker:
-      - image: cimg/python:3.5
-
-  test-3.6:
-    <<: *3x-template
     docker:
       - image: cimg/python:3.6
 
