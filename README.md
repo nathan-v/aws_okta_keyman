@@ -316,16 +316,11 @@ Credentials][aws_role_credentials] tools.
 See CONTRIBUTING.md for more information on contributing to this project.
 
 ## License
-Copyright 2020 Nathan V
+Copyright 2022 Nathan V
 
 Copyright 2018 Nextdoor.com, Inc
 
 Licensed under the Apache License, Version 2.0. See LICENSE.txt file for details.
-
-Some code in `aws_okta_keyman/okta.py`, `aws_okta_keyman/aws.py`,
-`aws_okta_keyman/aws_saml.py`, and `aws_okta_keyman/test/aws_saml_test.py` is
-distributed under MIT license. See the source files for details. A copy of the
-license is in the LICENSE_MIT.txt file.
 
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fnathan-v%2Faws_okta_keyman.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fnathan-v%2Faws_okta_keyman?ref=badge_large)
 
