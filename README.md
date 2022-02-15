@@ -316,7 +316,7 @@ Credentials][aws_role_credentials] tools.
 See CONTRIBUTING.md for more information on contributing to this project.
 
 ## License
-Copyright 2020 Nathan V
+Copyright 2022 Nathan V
 
 Copyright 2018 Nextdoor.com, Inc
 
