@@ -8,14 +8,14 @@ dependencies: &dependencies
     pip install -r test_requirements.txt
 
 tests: &tests
-  name: run tests
+  name: Unit tests
   command: |
     . venv/bin/activate
     pytest --cov=aws_okta_keyman -v
     codecov
 
 pycodestyle: &codechecks
-    name: black
+    name: Style and formatting checks
     command: |
       . venv/bin/activate
       pre-commit run --all-files
