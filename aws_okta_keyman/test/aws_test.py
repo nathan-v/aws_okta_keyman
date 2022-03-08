@@ -1,17 +1,10 @@
-from __future__ import unicode_literals
-
 import datetime
-import sys
 import unittest
+from unittest import mock
 
 import botocore
 
 from aws_okta_keyman import aws
-
-if sys.version_info[0] < 3:  # Python 2
-    import mock
-else:
-    from unittest import mock
 
 
 AWS_HTML_MULTIACCOUNT_LOGIN = (
@@ -38,7 +31,8 @@ AWS_HTML_MULTIACCOUNT_LOGIN = (
     'admin" class="saml-radio" id="arn:aws:iam::123457:role/admin" /><label '
     'for="arn:aws:iam::123457:role/admin" class="saml-role-description">admin'
     '</label><span style="clear: both;"></span></div></div></fieldset></form>'
-    '</div></div></body></html>')
+    '</div></div></body></html>'
+)
 
 
 class MockResponse:
@@ -70,26 +64,34 @@ class TestCredentials(unittest.TestCase):
             creds={
                 'AccessKeyId': 'key',
                 'SecretAccessKey': 'secret',
-                'SessionToken': 'token'})
+                'SessionToken': 'token',
+            },
+        )
 
-        fake_parser.assert_has_calls([
-            mock.call.has_section('TestProfile'),
-            mock.call.add_section('TestProfile'),
-            mock.call.set('TestProfile', 'region', 'us-east-1'),
-            mock.call.set('TestProfile', 'aws_session_token', 'token'),
-            mock.call.set('TestProfile', 'aws_security_token', 'token'),
-            mock.call.set('TestProfile', 'aws_secret_access_key', 'secret'),
-            mock.call.set('TestProfile', 'output', 'json'),
-            mock.call.set('TestProfile', 'aws_access_key_id', 'key')
-        ], any_order=True)
+        fake_parser.assert_has_calls(
+            [
+                mock.call.has_section('TestProfile'),
+                mock.call.add_section('TestProfile'),
+                mock.call.set('TestProfile', 'region', 'us-east-1'),
+                mock.call.set('TestProfile', 'aws_session_token', 'token'),
+                mock.call.set('TestProfile', 'aws_security_token', 'token'),
+                mock.call.set(
+                    'TestProfile', 'aws_secret_access_key', 'secret',
+                ),
+                mock.call.set('TestProfile', 'output', 'json'),
+                mock.call.set('TestProfile', 'aws_access_key_id', 'key'),
+            ], any_order=True,
+        )
 
     @mock.patch('aws_okta_keyman.aws.os.chmod')
     @mock.patch('configparser.ConfigParser')
     @mock.patch('aws_okta_keyman.aws.open')
-    def test_add_profile_missing_file_creates_new(self,
-                                                  open_mock,
-                                                  parser_mock,
-                                                  chmod_mock):
+    def test_add_profile_missing_file_creates_new(
+        self,
+        open_mock,
+        parser_mock,
+        chmod_mock,
+    ):
         fake_parser = mock.MagicMock(name='config_parser')
         parser_mock.return_value = fake_parser
 
@@ -105,16 +107,18 @@ class TestCredentials(unittest.TestCase):
             creds={
                 'AccessKeyId': 'key',
                 'SecretAccessKey': 'secret',
-                'SessionToken': 'token'})
+                'SessionToken': 'token',
+            },
+        )
 
         open_mock.assert_has_calls([
             mock.call('/test', 'r'),
-            mock.call('/test', 'w+')
+            mock.call('/test', 'w+'),
         ])
 
         # Verify we're setting the file permissions as 0600 for safety
         chmod_mock.assert_has_calls([
-            mock.call('/test', 0o600)
+            mock.call('/test', 0o600),
         ])
 
 
@@ -131,8 +135,10 @@ class TestSession(unittest.TestCase):
     @mock.patch('os.path.expanduser')
     @mock.patch('os.makedirs')
     @mock.patch('os.path.exists')
-    def test_init_folder_missing(self, exists_mock, makedirs_mock,
-                                 expuser_mock):
+    def test_init_folder_missing(
+        self, exists_mock, makedirs_mock,
+        expuser_mock,
+    ):
         exists_mock.return_value = False
         expuser_mock.return_value = '/home/fakeuser'
 
@@ -143,8 +149,10 @@ class TestSession(unittest.TestCase):
     @mock.patch('os.path.expanduser')
     @mock.patch('os.makedirs')
     @mock.patch('os.path.exists')
-    def test_init_folder_exists(self, exists_mock, _makedirs_mock,
-                                expuser_mock):
+    def test_init_folder_exists(
+        self, exists_mock, _makedirs_mock,
+        expuser_mock,
+    ):
         exists_mock.return_value = True
         expuser_mock.return_value = '/home/fakeuser'
 
@@ -155,8 +163,10 @@ class TestSession(unittest.TestCase):
     @mock.patch('os.path.expanduser')
     @mock.patch('os.makedirs')
     @mock.patch('os.path.exists')
-    def test_init_with_duration(self, exists_mock, _makedirs_mock,
-                                expuser_mock):
+    def test_init_with_duration(
+        self, exists_mock, _makedirs_mock,
+        expuser_mock,
+    ):
         exists_mock.return_value = True
         expuser_mock.return_value = '/home/fakeuser'
 
@@ -216,10 +226,12 @@ class TestSession(unittest.TestCase):
         self.assertEqual(None, ret)
 
         # Verify add_profile is called with the correct args
-        creds = {'AccessKeyId': None, 'SecretAccessKey': None,
-                 'SessionToken': None, 'Expiration': None}
+        creds = {
+            'AccessKeyId': None, 'SecretAccessKey': None,
+            'SessionToken': None, 'Expiration': None,
+        }
         mock_add_profile.assert_has_calls([
-            mock.call(creds=creds, name='default', region='us-east-1')
+            mock.call(creds=creds, name='default', region='us-east-1'),
         ])
 
     @mock.patch('aws_okta_keyman.aws.Session._write')
@@ -230,12 +242,15 @@ class TestSession(unittest.TestCase):
         session = aws.Session('BogusAssertion')
         session.roles = [{'arn': '', 'principle': ''}]
         session.assertion = assertion
-        sts = {'Credentials':
-               {'AccessKeyId':     'AKI',
+        sts = {
+            'Credentials':
+            {
+                'AccessKeyId':     'AKI',
                 'SecretAccessKey': 'squirrel',
                 'SessionToken':    'token',
-                'Expiration':      'never'
-                }}
+                'Expiration':      'never',
+            },
+        }
         session.sts = mock.Mock()
         session.sts.assume_role_with_saml.return_value = sts
 
@@ -248,31 +263,37 @@ class TestSession(unittest.TestCase):
         self.assertEqual('never', session.creds['Expiration'])
         # Verify _write is called correctly
         mock_write.assert_has_calls([
-            mock.call()
+            mock.call(),
         ])
         session.sts.assert_has_calls([
             mock.call.assume_role_with_saml(
                 RoleArn='',
                 PrincipalArn='',
                 SAMLAssertion=mock.ANY,
-                DurationSeconds=3600)
+                DurationSeconds=3600,
+            ),
         ])
 
     @mock.patch('aws_okta_keyman.aws.Session._write')
     def test_assume_role_multiple(self, mock_write):
         mock_write.return_value = None
         assertion = mock.Mock()
-        roles = [{'arn': '1', 'principle': ''},
-                 {'arn': '2', 'principle': ''}]
+        roles = [
+            {'arn': '1', 'principle': ''},
+            {'arn': '2', 'principle': ''},
+        ]
         assertion.roles.return_value = roles
         session = aws.Session('BogusAssertion')
         session.assertion = assertion
-        sts = {'Credentials':
-               {'AccessKeyId':     'AKI',
+        sts = {
+            'Credentials':
+            {
+                'AccessKeyId':     'AKI',
                 'SecretAccessKey': 'squirrel',
                 'SessionToken':    'token',
-                'Expiration':      'never'
-                }}
+                'Expiration':      'never',
+            },
+        }
         session.sts = mock.Mock()
         session.sts.assume_role_with_saml.return_value = sts
 
@@ -284,21 +305,26 @@ class TestSession(unittest.TestCase):
         mock_write.return_value = None
         assertion = mock.Mock()
 
-        roles = [{'role': '::::1:role/role1', 'principle': '', 'arn': '1'},
-                 {'role': '::::1:role/role2', 'principle': '', 'arn': '2'},
-                 {'role': '::::1:role/role3', 'principle': '', 'arn': '3'}]
+        roles = [
+            {'role': '::::1:role/role1', 'principle': '', 'arn': '1'},
+            {'role': '::::1:role/role2', 'principle': '', 'arn': '2'},
+            {'role': '::::1:role/role3', 'principle': '', 'arn': '3'},
+        ]
 
         assertion.roles.return_value = roles
         session = aws.Session('BogusAssertion')
         session.role = 1
         session.roles = roles
         session.assertion = assertion
-        sts = {'Credentials':
-               {'AccessKeyId':     'AKI',
+        sts = {
+            'Credentials':
+            {
+                'AccessKeyId':     'AKI',
                 'SecretAccessKey': 'squirrel',
                 'SessionToken':    'token',
-                'Expiration':      'never'
-                }}
+                'Expiration':      'never',
+            },
+        }
         session.sts = mock.Mock()
         session.sts.assume_role_with_saml.return_value = sts
 
@@ -311,14 +337,15 @@ class TestSession(unittest.TestCase):
         self.assertEqual('never', session.creds['Expiration'])
         # Verify _write is called correctly
         mock_write.assert_has_calls([
-            mock.call()
+            mock.call(),
         ])
         session.sts.assert_has_calls([
             mock.call.assume_role_with_saml(
                 RoleArn='2',
                 PrincipalArn='',
                 SAMLAssertion=mock.ANY,
-                DurationSeconds=3600)
+                DurationSeconds=3600,
+            ),
         ])
 
     @mock.patch('aws_okta_keyman.aws.Session._print_creds')
@@ -330,12 +357,15 @@ class TestSession(unittest.TestCase):
         session.role = 0
         session.roles = [{'arn': '', 'principle': ''}]
         session.assertion = assertion
-        sts = {'Credentials':
-               {'AccessKeyId':     'AKI',
+        sts = {
+            'Credentials':
+            {
+                'AccessKeyId':     'AKI',
                 'SecretAccessKey': 'squirrel',
                 'SessionToken':    'token',
-                'Expiration':      'never'
-                }}
+                'Expiration':      'never',
+            },
+        }
         session.sts = mock.Mock()
         session.sts.assume_role_with_saml.return_value = sts
 
@@ -353,12 +383,15 @@ class TestSession(unittest.TestCase):
         session.duration = 1000000
         session.roles = [{'arn': '', 'principle': ''}]
         session.assertion = assertion
-        sts = {'Credentials':
-               {'AccessKeyId':     'AKI',
+        sts = {
+            'Credentials':
+            {
+                'AccessKeyId':     'AKI',
                 'SecretAccessKey': 'squirrel',
                 'SessionToken':    'token',
-                'Expiration':      'never'
-                }}
+                'Expiration':      'never',
+            },
+        }
         session.sts = mock.Mock()
         err_mock = mock.MagicMock()
         err = botocore.exceptions.ClientError(err_mock, err_mock)
@@ -375,12 +408,14 @@ class TestSession(unittest.TestCase):
                 RoleArn='',
                 PrincipalArn='',
                 SAMLAssertion=mock.ANY,
-                DurationSeconds=1000000),
+                DurationSeconds=1000000,
+            ),
             mock.call.assume_role_with_saml(
                 RoleArn='',
                 PrincipalArn='',
                 SAMLAssertion=mock.ANY,
-                DurationSeconds=3600),
+                DurationSeconds=3600,
+            ),
         ])
 
     @mock.patch('aws_okta_keyman.aws.LOG')
@@ -396,18 +431,19 @@ class TestSession(unittest.TestCase):
         session._print_creds()
 
         log_mock.assert_has_calls([
-            mock.call.info(expected)
+            mock.call.info(expected),
         ])
 
     @mock.patch('aws_okta_keyman.aws.requests')
     def test_generate_aws_console_url(self, requests_mock):
         session = aws.Session('BogusAssertion')
         session.duration = 3600
-        session.creds = {'AccessKeyId':     'AKI',
-                         'SecretAccessKey': 'squirrel',
-                         'SessionToken':    'token',
-                         'Expiration':      'never'
-                         }
+        session.creds = {
+            'AccessKeyId':     'AKI',
+            'SecretAccessKey': 'squirrel',
+            'SessionToken':    'token',
+            'Expiration':      'never',
+        }
         resp_mock = mock.MagicMock()
         resp_mock.json.return_value = {'SigninToken': 'baz'}
         requests_mock.get.return_value = resp_mock
@@ -418,7 +454,8 @@ class TestSession(unittest.TestCase):
         expected = (
             "https://signin.aws.amazon.com/federation?Action=login&Issuer="
             "https://ex.okta.com/foo/bar&Destination="
-            "https%3A//console.aws.amazon.com/&SigninToken=baz")
+            "https%3A//console.aws.amazon.com/&SigninToken=baz"
+        )
         self.assertEqual(ret, expected)
         # mock.ANY required for the session due to Python 3.5 behavior
         requests_mock.assert_has_calls([
@@ -427,8 +464,10 @@ class TestSession(unittest.TestCase):
                 params={
                     'Action': 'getSigninToken',
                     'SessionDuration': 3600,
-                    'Session': mock.ANY}),
-            mock.call.get().json()
+                    'Session': mock.ANY,
+                },
+            ),
+            mock.call.get().json(),
         ])
 
     def test_export_creds_to_var_string(self):
@@ -444,9 +483,11 @@ class TestSession(unittest.TestCase):
         self.assertEqual(ret, expected)
 
     def test_available_roles(self):
-        roles = [{'role': '::::1:role/role1', 'principle': ''},
-                 {'role': '::::1:role/role3', 'principle': ''},
-                 {'role': '::::1:role/role2', 'principle': ''}]
+        roles = [
+            {'role': '::::1:role/role1', 'principle': ''},
+            {'role': '::::1:role/role3', 'principle': ''},
+            {'role': '::::1:role/role2', 'principle': ''},
+        ]
         session = aws.Session('BogusAssertion')
         session.assertion = mock.MagicMock()
         session.assertion.roles.return_value = roles
@@ -456,37 +497,55 @@ class TestSession(unittest.TestCase):
         print(result)
 
         expected = [
-            {'account': '1', 'role_name': 'role1',
-             'principle': '', 'arn': '::::1:role/role1',
-             'roleIdx': 0},
-            {'account': '1', 'role_name': 'role2',
-             'principle': '', 'arn': '::::1:role/role2',
-             'roleIdx': 1},
-            {'account': '1', 'role_name': 'role3',
-             'principle': '', 'arn': '::::1:role/role3',
-             'roleIdx': 2}
-            ]
+            {
+                'account': '1', 'role_name': 'role1',
+                'principle': '', 'arn': '::::1:role/role1',
+                'roleIdx': 0,
+            },
+            {
+                'account': '1', 'role_name': 'role2',
+                'principle': '', 'arn': '::::1:role/role2',
+                'roleIdx': 1,
+            },
+            {
+                'account': '1', 'role_name': 'role3',
+                'principle': '', 'arn': '::::1:role/role3',
+                'roleIdx': 2,
+            },
+        ]
 
         self.assertEqual(expected, result)
 
     def test_available_roles_multiple_accounts(self):
-        roles = [{'role': '::::1:role/role', 'principle': ''},
-                 {'role': '::::2:role/role', 'principle': ''}]
-        roles_full = [{'account': '1', 'role_name': 'role',
-                       'arn': '::::1:role/role', 'principle': ''},
-                      {'account': '2', 'role_name': 'role',
-                       'arn': '::::2:role/role', 'principle': ''}]
+        roles = [
+            {'role': '::::1:role/role', 'principle': ''},
+            {'role': '::::2:role/role', 'principle': ''},
+        ]
+        roles_full = [
+            {
+                'account': '1', 'role_name': 'role',
+                'arn': '::::1:role/role', 'principle': '',
+            },
+            {
+                'account': '2', 'role_name': 'role',
+                'arn': '::::2:role/role', 'principle': '',
+            },
+        ]
         session = aws.Session('BogusAssertion')
         session.assertion = mock.MagicMock()
         session.assertion.roles.return_value = roles
         session.account_ids_to_names = mock.MagicMock()
         session.account_ids_to_names.return_value = roles_full
         expected = [
-            {'account': '1', 'role_name': 'role',
-             'principle': '', 'arn': '::::1:role/role', 'roleIdx': 0},
-            {'account': '2', 'role_name': 'role',
-             'principle': '', 'arn': '::::2:role/role', 'roleIdx': 1}
-            ]
+            {
+                'account': '1', 'role_name': 'role',
+                'principle': '', 'arn': '::::1:role/role', 'roleIdx': 0,
+            },
+            {
+                'account': '2', 'role_name': 'role',
+                'principle': '', 'arn': '::::2:role/role', 'roleIdx': 1,
+            },
+        ]
 
         result = session.available_roles()
 
@@ -498,10 +557,14 @@ class TestSession(unittest.TestCase):
         session.get_account_name_map = mock.MagicMock()
         account_map = {'1': 'One', '2': 'Two'}
         session.get_account_name_map.return_value = account_map
-        roles = [{'role': 'role', 'account': '1'},
-                 {'role': 'role', 'account': '2'}]
-        expected = [{'account': 'One', 'role': 'role'},
-                    {'account': 'Two', 'role': 'role'}]
+        roles = [
+            {'role': 'role', 'account': '1'},
+            {'role': 'role', 'account': '2'},
+        ]
+        expected = [
+            {'account': 'One', 'role': 'role'},
+            {'account': 'Two', 'role': 'role'},
+        ]
 
         ret = session.account_ids_to_names(roles)
 
@@ -511,8 +574,10 @@ class TestSession(unittest.TestCase):
         session = aws.Session('BogusAssertion')
         session.get_account_name_map = mock.MagicMock()
         session.get_account_name_map.side_effect = Exception()
-        roles = [{'role': '::::1:role'},
-                 {'role': '::::2:role'}]
+        roles = [
+            {'role': '::::1:role'},
+            {'role': '::::2:role'},
+        ]
         ret = session.account_ids_to_names(roles)
 
         self.assertEqual(ret, [{'role': '::::1:role'}, {'role': '::::2:role'}])

@@ -1,17 +1,10 @@
-from __future__ import unicode_literals
-
 import os
-import sys
 import unittest
+from unittest import mock
 
 import yaml
 
 from aws_okta_keyman.config import Config
-
-if sys.version_info[0] < 3:  # Python 2
-    import mock
-else:
-    from unittest import mock
 
 
 class ConfigTest(unittest.TestCase):
@@ -79,8 +72,10 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(config.username, 'user')
 
     @mock.patch('aws_okta_keyman.config.getpass')
-    def test_validate_automatic_username_from_partial_config(self,
-                                                             getpass_mock):
+    def test_validate_automatic_username_from_partial_config(
+        self,
+        getpass_mock,
+    ):
         getpass_mock.getuser.return_value = 'user'
         config = Config(['aws_okta_keyman.py'])
         config.accounts = [{'appid': 'A123'}]
@@ -127,7 +122,7 @@ class ConfigTest(unittest.TestCase):
             'aws_okta_keyman.py',
             '-a', 'app/id',
             '-o', 'foobar',
-            '-u', 'test'
+            '-u', 'test',
         ]
         config = Config(argv)
         config.get_config()
@@ -140,9 +135,11 @@ class ConfigTest(unittest.TestCase):
     @mock.patch('aws_okta_keyman.config.Config.validate')
     @mock.patch('aws_okta_keyman.config.Config.parse_args')
     @mock.patch('aws_okta_keyman.config.os.path.isfile')
-    def test_get_config_auto_config_only(self, isfile_mock, parse_mock,
-                                         valid_mock, config_mock,
-                                         expuser_mock):
+    def test_get_config_auto_config_only(
+        self, isfile_mock, parse_mock,
+        valid_mock, config_mock,
+        expuser_mock,
+    ):
         isfile_mock.return_value = True
         parse_mock.return_value = None
         valid_mock.return_value = None
@@ -163,9 +160,11 @@ class ConfigTest(unittest.TestCase):
     @mock.patch('aws_okta_keyman.config.Config.parse_config')
     @mock.patch('aws_okta_keyman.config.Config.validate')
     @mock.patch('aws_okta_keyman.config.os.path.isfile')
-    def test_get_config_specified_config_only(self, isfile_mock, valid_mock,
-                                              config_mock, expuser_mock,
-                                              _parse_mock):
+    def test_get_config_specified_config_only(
+        self, isfile_mock, valid_mock,
+        config_mock, expuser_mock,
+        _parse_mock,
+    ):
         isfile_mock.return_value = True
         valid_mock.return_value = None
         config_mock.return_value = None
@@ -184,9 +183,11 @@ class ConfigTest(unittest.TestCase):
     @mock.patch('aws_okta_keyman.config.Config.validate')
     @mock.patch('aws_okta_keyman.config.Config.parse_args')
     @mock.patch('aws_okta_keyman.config.os.path.isfile')
-    def test_get_config_write_mixed_config(self, isfile_mock, _parse_mock,
-                                           valid_mock, expuser_mock,
-                                           write_mock):
+    def test_get_config_write_mixed_config(
+        self, isfile_mock, _parse_mock,
+        valid_mock, expuser_mock,
+        write_mock,
+    ):
         isfile_mock.return_value = True
         valid_mock.return_value = None
         write_mock.return_value = None
@@ -204,7 +205,7 @@ class ConfigTest(unittest.TestCase):
     def test_parse_args_no_req_main(self):
         argv = [
             'aws_okta_keyman.py',
-            '-D'
+            '-D',
         ]
         config = Config(argv)
         config.parse_args(main_required=False)
@@ -216,7 +217,7 @@ class ConfigTest(unittest.TestCase):
     def test_parse_args_req_main_missing(self):
         argv = [
             'aws_okta_keyman.py',
-            '-D'
+            '-D',
         ]
         config = Config(argv)
 
@@ -229,7 +230,7 @@ class ConfigTest(unittest.TestCase):
             'aws_okta_keyman.py',
             '-a', 'app/id',
             '-o', 'foobar',
-            '-u', 'test'
+            '-u', 'test',
         ]
         config = Config(argv)
         config.parse_args(main_required=True)
@@ -251,7 +252,7 @@ class ConfigTest(unittest.TestCase):
             '-c', 'config_file_path',
             '-w', 'write_file_path',
             '-d', 'push',
-            '-D', '-r', '-p'
+            '-D', '-r', '-p',
         ]
         config = Config(argv)
         config.parse_args(main_required=True)
@@ -281,7 +282,7 @@ class ConfigTest(unittest.TestCase):
             '--config', 'config_file_path',
             '--writepath', 'write_file_path',
             '--duo_factor', 'push',
-            '--debug', '--reup'
+            '--debug', '--reup',
         ]
         config = Config(argv)
         config.parse_args(main_required=True)
@@ -301,16 +302,20 @@ class ConfigTest(unittest.TestCase):
     @mock.patch('aws_okta_keyman.config.os.path.isfile')
     def test_read_yaml(self, isfile_mock):
         isfile_mock.return_value = True
-        yml = ("username: user@example.com\n"
-               "org: example\n"
-               "appid: app/id\n")
+        yml = (
+            "username: user@example.com\n"
+            "org: example\n"
+            "appid: app/id\n"
+        )
 
         m = mock.mock_open(read_data=yml)
         with mock.patch('aws_okta_keyman.config.open', m):
             ret = Config.read_yaml('./.config/aws_okta_keyman.yml')
 
         expected = {
-            'username': 'user@example.com', 'org': 'example', 'appid': 'app/id'
+            'username': 'user@example.com',
+            'org': 'example',
+            'appid': 'app/id',
         }
         self.assertEqual(ret, expected)
 
@@ -324,15 +329,19 @@ class ConfigTest(unittest.TestCase):
     def test_read_yaml_file_missing_with_raise(self, isfile_mock):
         isfile_mock.return_value = False
         with self.assertRaises(IOError):
-            Config.read_yaml('./.config/aws_okta_keyman.yml',
-                             raise_on_error=True)
+            Config.read_yaml(
+                './.config/aws_okta_keyman.yml',
+                raise_on_error=True,
+            )
 
     @mock.patch('aws_okta_keyman.config.os.path.isfile')
     def test_read_yaml_parse_error_no_raise(self, isfile_mock):
         isfile_mock.return_value = True
-        yml = ("username: user@example.com\n"
-               "org: example\n"
-               "- appid: foo\n")
+        yml = (
+            "username: user@example.com\n"
+            "org: example\n"
+            "- appid: foo\n"
+        )
 
         m = mock.mock_open(read_data=yml)
         with mock.patch('aws_okta_keyman.config.open', m):
@@ -343,22 +352,28 @@ class ConfigTest(unittest.TestCase):
     @mock.patch('aws_okta_keyman.config.os.path.isfile')
     def test_read_yaml_parse_error_with_raise(self, isfile_mock):
         isfile_mock.return_value = True
-        yml = ("username: user@example.com\n"
-               "org: example\n"
-               "- appid: foo\n")
+        yml = (
+            "username: user@example.com\n"
+            "org: example\n"
+            "- appid: foo\n"
+        )
 
         m = mock.mock_open(read_data=yml)
         with mock.patch('aws_okta_keyman.config.open', m):
             with self.assertRaises(yaml.parser.ParserError):
-                Config.read_yaml('./.config/aws_okta_keyman.yml',
-                                 raise_on_error=True)
+                Config.read_yaml(
+                    './.config/aws_okta_keyman.yml',
+                    raise_on_error=True,
+                )
 
     @mock.patch('aws_okta_keyman.config.os.path.isfile')
     def test_read_yaml_scan_error_no_raise(self, isfile_mock):
         isfile_mock.return_value = True
-        yml = ("username: user@example.com\n"
-               "org: example\n"
-               "appid app/id\n")
+        yml = (
+            "username: user@example.com\n"
+            "org: example\n"
+            "appid app/id\n"
+        )
 
         m = mock.mock_open(read_data=yml)
         with mock.patch('aws_okta_keyman.config.open', m):
@@ -369,15 +384,19 @@ class ConfigTest(unittest.TestCase):
     @mock.patch('aws_okta_keyman.config.os.path.isfile')
     def test_read_yaml_scan_error_with_raise(self, isfile_mock):
         isfile_mock.return_value = True
-        yml = ("username: user@example.com\n"
-               "org: example\n"
-               "appid app/id\n")
+        yml = (
+            "username: user@example.com\n"
+            "org: example\n"
+            "appid app/id\n"
+        )
 
         m = mock.mock_open(read_data=yml)
         with mock.patch('aws_okta_keyman.config.open', m):
             with self.assertRaises(yaml.scanner.ScannerError):
-                Config.read_yaml('./.config/aws_okta_keyman.yml',
-                                 raise_on_error=True)
+                Config.read_yaml(
+                    './.config/aws_okta_keyman.yml',
+                    raise_on_error=True,
+                )
 
     def test_parse_config(self):
         config = Config(['aws_okta_keyman.py'])
@@ -437,7 +456,7 @@ class ConfigTest(unittest.TestCase):
             config.write_config()
 
         m.assert_has_calls([
-            mock.call(u'./.config/aws_okta_keyman.yml', 'w'),
+            mock.call('./.config/aws_okta_keyman.yml', 'w'),
         ])
         m.assert_has_calls([
             mock.call().write('accounts'),
@@ -473,7 +492,7 @@ class ConfigTest(unittest.TestCase):
             mock.call().write('\n'),
             mock.call().flush(),
             mock.call().flush(),
-            mock.call().__exit__(None, None, None)
+            mock.call().__exit__(None, None, None),
         ])
 
     def test_write_config_new_file(self):
@@ -514,7 +533,7 @@ class ConfigTest(unittest.TestCase):
             mock.call().write('\n'),
             mock.call().flush(),
             mock.call().flush(),
-            mock.call().__exit__(None, None, None)
+            mock.call().__exit__(None, None, None),
         ])
 
     def test_write_config_path_expansion(self):
@@ -552,7 +571,7 @@ class ConfigTest(unittest.TestCase):
             config.write_config()
 
         os_mock.assert_has_calls([
-            mock.call.makedirs(folderpath)
+            mock.call.makedirs(folderpath),
         ])
 
     def test_clean_config_for_write(self):
@@ -568,10 +587,10 @@ class ConfigTest(unittest.TestCase):
             'shouldstillbehere': 'woohoo',
             'password_reset': True,
             'command': None,
-            'update': None
+            'update': None,
         }
         config_out = {
-            'shouldstillbehere': 'woohoo'
+            'shouldstillbehere': 'woohoo',
         }
         ret = Config.clean_config_for_write(config_in)
         self.assertEqual(ret, config_out)
@@ -579,7 +598,7 @@ class ConfigTest(unittest.TestCase):
     def test_clean_config_for_write_with_accounts(self):
         accounts = [
             {'name': 'Account 1', 'appid': 'ABC123'},
-            {'name': 'Account 2', 'appid': 'XYZ890'}
+            {'name': 'Account 2', 'appid': 'XYZ890'},
         ]
         config_in = {
             'name': 'foo',
@@ -593,11 +612,11 @@ class ConfigTest(unittest.TestCase):
             'shouldstillbehere': 'woohoo',
             'password_reset': True,
             'command': None,
-            'update': None
+            'update': None,
         }
         config_out = {
             'accounts': accounts,
-            'shouldstillbehere': 'woohoo'
+            'shouldstillbehere': 'woohoo',
         }
         ret = Config.clean_config_for_write(config_in)
         self.assertEqual(ret, config_out)

@@ -1,42 +1,37 @@
-from __future__ import unicode_literals
-
-import sys
 import unittest
+from io import BytesIO as IO
+from unittest import mock
 
 from aws_okta_keyman import duo
 
-if sys.version_info[0] < 3:
-    import mock  # Python 2
-    from StringIO import StringIO as IO
-else:
-    from unittest import mock  # Python 3
-    from io import BytesIO as IO
 
 DETAILS = {
     'host': 'somehost',
     'signature': 'somesig:differentsig',
     '_links': {
         'script': {
-            'href': 'http://example.com/script.js'
+            'href': 'http://example.com/script.js',
         },
         'complete': {
-            'href': 'http://example.com/callback'
+            'href': 'http://example.com/callback',
         },
     },
 }
 
-HTML = ('''<p style="text-align:center">You may close this after the\n'''
-        '''         next page loads successfully</p>\n        '''
-        '''<iframe id="duo_iframe" style="margin: 0 auto;display:block;"\n'''
-        '''        width="620" height="330" frameborder="0"></iframe>\n'''
-        '''        <form method="POST" id="duo_form" '''
-        '''action="http://example.com/callback">\n        '''
-        '''<input type="hidden" name="stateToken" value="token" /></form>\n'''
-        '''        <script src="http://example.com/script.js"></script>'''
-        '''<script>Duo.init(\n          '''
-        '''{\'host\': \'somehost\',\'sig_request\': \'somesig\','''
-        '''\'post_action\': \'http://example.com/callback\'}\n'''
-        '''        );</script>''')
+HTML = (
+    '''<p style="text-align:center">You may close this after the\n'''
+    '''         next page loads successfully</p>\n        '''
+    '''<iframe id="duo_iframe" style="margin: 0 auto;display:block;"\n'''
+    '''        width="620" height="330" frameborder="0"></iframe>\n'''
+    '''        <form method="POST" id="duo_form" '''
+    '''action="http://example.com/callback">\n        '''
+    '''<input type="hidden" name="stateToken" value="token" /></form>\n'''
+    '''        <script src="http://example.com/script.js"></script>'''
+    '''<script>Duo.init(\n          '''
+    '''{\'host\': \'somehost\',\'sig_request\': \'somesig\','''
+    '''\'post_action\': \'http://example.com/callback\'}\n'''
+    '''        );</script>'''
+)
 
 
 class MockResponse:
@@ -93,7 +88,7 @@ class TestDuo(unittest.TestCase):
 
         server_mock.assert_has_calls([
             mock.call(('127.0.0.1', 65432), duo_test.handler_with_html),
-            mock.call().serve_forever()
+            mock.call().serve_forever(),
         ])
 
     @mock.patch('aws_okta_keyman.duo.QuietHandler')
@@ -104,7 +99,7 @@ class TestDuo(unittest.TestCase):
         assert qh_mock.called
 
         qh_mock.assert_has_calls([
-            mock.call(None, 'foo', 'bar', 'baz')
+            mock.call(None, 'foo', 'bar', 'baz'),
         ])
 
     def test_trigger_duo_nofactor(self):
@@ -122,21 +117,24 @@ class TestDuo(unittest.TestCase):
         self.setup_for_trigger_duo('passcode')
         self.duo_test.trigger_duo('123456')
         self.duo_test.get_txid.assert_has_calls(
-            [mock.call('sid', 'Passcode', '123456')])
+            [mock.call('sid', 'Passcode', '123456')],
+        )
         self.duo_test.get_status.assert_has_calls([mock.call('txid', 'sid')])
 
     def test_trigger_duo_call_success(self):
         self.setup_for_trigger_duo('call')
         self.duo_test.trigger_duo()
         self.duo_test.get_txid.assert_has_calls(
-            [mock.call('sid', 'Phone+Call')])
+            [mock.call('sid', 'Phone+Call')],
+        )
         self.duo_test.get_status.assert_has_calls([mock.call('txid', 'sid')])
 
     def test_trigger_duo_push_success(self):
         self.setup_for_trigger_duo('push')
         self.duo_test.trigger_duo()
         self.duo_test.get_txid.assert_has_calls(
-            [mock.call('sid', 'Duo+Push')])
+            [mock.call('sid', 'Duo+Push')],
+        )
         self.duo_test.get_status.assert_has_calls([mock.call('txid', 'sid')])
 
     def test_do_auth_302_success(self):
@@ -146,18 +144,31 @@ class TestDuo(unittest.TestCase):
         duo_test.session.post.return_value = mock.MagicMock()
         duo_test.session.post.return_value.status_code = 302
         duo_test.session.post.return_value.headers = {
-            'Location': 'https://someurl/foo?sid=somesid'}
+            'Location': 'https://someurl/foo?sid=somesid',
+        }
         ret = duo_test.do_auth('sid', 'certs_url')
 
-        self.assertEqual(duo_test.session.params,
-                         {'certs_url': 'certs_url', 'sid': 'sid'})
-        self.assertEqual(duo_test.session.headers,
-                         {'Origin': 'https://somehost',
-                          'Content-Type': 'application/x-www-form-urlencoded'})
+        self.assertEqual(
+            duo_test.session.params,
+            {'certs_url': 'certs_url', 'sid': 'sid'},
+        )
+        self.assertEqual(
+            duo_test.session.headers,
+            {
+                'Origin': 'https://somehost',
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+        )
         duo_test.session.assert_has_calls(
-            [mock.call.post(
-                ('https://somehost/frame/web/v1/auth?tx=somesig&parent='
-                 'http://0.0.0.0:3000/duo&v=2.1'), allow_redirects=False)])
+            [
+                mock.call.post(
+                    (
+                        'https://somehost/frame/web/v1/auth?tx=somesig&parent='
+                        'http://0.0.0.0:3000/duo&v=2.1'
+                    ), allow_redirects=False,
+                ),
+            ],
+        )
         self.assertEqual(ret, 'somesid')
 
     def test_do_auth_302_location_missing(self):
@@ -178,7 +189,8 @@ class TestDuo(unittest.TestCase):
         json = {'response': {'sid': 'sid', 'certs_url': 'certs_url'}}
         headers = {'Location': 'https://someurl/foo?sid=somesid'}
         duo_test.session.post.side_effect = [
-            MockResponse(headers, 200, json), MockResponse(headers, 302, json)]
+            MockResponse(headers, 200, json), MockResponse(headers, 302, json),
+        ]
         ret = duo_test.do_auth(None, 'certs_url')
 
         self.assertEqual(ret, 'somesid')
@@ -202,9 +214,12 @@ class TestDuo(unittest.TestCase):
         ret = duo_test.get_txid('sid', 'factor', '000000')
 
         duo_test.session.assert_has_calls([
-            mock.call.post(('https://somehost/frame/prompt?sid=sid&device='
-                            'phone1&factor=factor&out_of_date=False&'
-                            'passcode=000000'))])
+            mock.call.post(
+                'https://somehost/frame/prompt?sid=sid&device='
+                'phone1&factor=factor&out_of_date=False&'
+                'passcode=000000',
+            ),
+        ])
         self.assertEqual(ret, 'txid')
 
     def test_get_txid_without_passcode(self):
@@ -216,8 +231,11 @@ class TestDuo(unittest.TestCase):
         ret = duo_test.get_txid('sid', 'factor')
 
         duo_test.session.assert_has_calls([
-            mock.call.post(('https://somehost/frame/prompt?sid=sid&device='
-                            'phone1&factor=factor&out_of_date=False'))])
+            mock.call.post(
+                'https://somehost/frame/prompt?sid=sid&device='
+                'phone1&factor=factor&out_of_date=False',
+            ),
+        ])
         self.assertEqual(ret, 'txid')
 
     @mock.patch('time.sleep', return_value=None)
@@ -229,12 +247,14 @@ class TestDuo(unittest.TestCase):
         headers = {'Location': 'https://someurl/foo?sid=somesid'}
         duo_test.session.post.side_effect = [
             MockResponse(headers, 200, json_wait),
-            MockResponse(headers, 200, json_ok)]
+            MockResponse(headers, 200, json_ok),
+        ]
         ret = duo_test.get_status('txid', 'sid')
 
         duo_test.session.assert_has_calls([
             mock.call.post('https://somehost/frame/status?sid=sid&txid=txid'),
-            mock.call.post('https://somehost/frame/status?sid=sid&txid=txid')])
+            mock.call.post('https://somehost/frame/status?sid=sid&txid=txid'),
+        ])
         self.assertEqual(ret, 'yum')
 
     @mock.patch('time.sleep', return_value=None)
@@ -247,7 +267,8 @@ class TestDuo(unittest.TestCase):
         headers = {'Location': 'https://someurl/foo?sid=somesid'}
         duo_test.session.post.side_effect = [
             MockResponse(headers, 200, json_wait),
-            MockResponse(headers, 200, json_ok)]
+            MockResponse(headers, 200, json_ok),
+        ]
         duo_test.get_status('txid', 'sid')
 
         duo_test.do_redirect.assert_has_calls([mock.call('url', 'sid')])
@@ -260,7 +281,8 @@ class TestDuo(unittest.TestCase):
         json_wait = {'stat': 'WAIT'}
         headers = {'Location': 'https://someurl/foo?sid=somesid'}
         duo_test.session.post.return_value = MockResponse(
-            headers, 500, json_wait)
+            headers, 500, json_wait,
+        )
 
         with self.assertRaises(Exception):
             duo_test.get_status('txid', 'sid')
@@ -273,7 +295,8 @@ class TestDuo(unittest.TestCase):
         json_wait = {'stat': 'WAIT'}
         headers = {'Location': 'https://someurl/foo?sid=somesid'}
         duo_test.session.post.return_value = MockResponse(
-            headers, 200, json_wait)
+            headers, 200, json_wait,
+        )
 
         with self.assertRaises(Exception):
             duo_test.get_status('txid', 'sid')
@@ -284,11 +307,13 @@ class TestDuo(unittest.TestCase):
         json_ok = {'response': {'cookie': 'yum'}, 'stat': 'OK'}
         headers = {'Location': 'https://someurl/foo?sid=somesid'}
         duo_test.session.post.return_value = MockResponse(
-            headers, 200, json_ok)
+            headers, 200, json_ok,
+        )
         ret = duo_test.do_redirect('url', 'sid')
 
         duo_test.session.assert_has_calls([
-            mock.call.post('https://somehosturl?sid=sid')])
+            mock.call.post('https://somehosturl?sid=sid'),
+        ])
         self.assertEqual(ret, 'yum')
 
     def test_do_redirect_failure(self):
@@ -297,7 +322,8 @@ class TestDuo(unittest.TestCase):
         json_ok = {'response': {'cookie': 'yum'}, 'stat': 'OK'}
         headers = {'Location': 'https://someurl/foo?sid=somesid'}
         duo_test.session.post.return_value = MockResponse(
-            headers, 500, json_ok)
+            headers, 500, json_ok,
+        )
 
         with self.assertRaises(Exception):
             duo_test.do_redirect('url', 'sid')
@@ -308,7 +334,8 @@ class TestDuo(unittest.TestCase):
         json_ok = {'response': {'crumbs': 'yum'}, 'stat': 'OK'}
         headers = {'Location': 'https://someurl/foo?sid=somesid'}
         duo_test.session.post.return_value = MockResponse(
-            headers, 200, json_ok)
+            headers, 200, json_ok,
+        )
         ret = duo_test.do_redirect('url', 'sid')
 
         self.assertEqual(ret, None)
@@ -357,7 +384,7 @@ class FactorRequiredTest(unittest.TestCase):
         self.assertEqual(error_response.state_token, 'state_token')
 
 
-class MockRequestPOST(object):
+class MockRequestPOST:
     def makefile(self, *args, **kwargs):
         return IO(b"POST /")
 
@@ -365,7 +392,7 @@ class MockRequestPOST(object):
         return None
 
 
-class MockRequest(object):
+class MockRequest:
     def __init__(self):
         self.resp = None
 

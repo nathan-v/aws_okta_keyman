@@ -1,15 +1,12 @@
-# -*- coding: utf-8 -*-
 #
 # Credits: Portions of this code were copied/modified from
 # https://github.com/ThoughtWorksInc/oktaauth
 #
 # Copyright (c) 2015, Peter Gillard-Moss
 # All rights reserved.
-
 # Permission to use, copy, modify, and/or distribute this software for any
 # purpose with or without fee is hereby granted, provided that the above
 # copyright notice and this permission notice appear in all copies.
-
 # THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
 # WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
 # MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
@@ -18,18 +15,15 @@
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 """This contains the Okta client code."""
-from __future__ import unicode_literals
 import logging
 import time
-from multiprocessing import Process
-import sys
 import webbrowser
+from multiprocessing import Process
 
 import requests
 
 from aws_okta_keyman import duo
-if sys.version_info[0] < 3:  # pragma: no cover
-    from exceptions import Exception  # Python 2
+from aws_okta_keyman.metadata import __version__
 
 LOG = logging.getLogger(__name__)
 
@@ -51,9 +45,10 @@ class InvalidPassword(BaseException):
 
 class ReauthNeeded(BaseException):
     """Raised when the SAML Assertion is invalid and we need to reauth."""
+
     def __init__(self, state_token=None):
         self.state_token = state_token
-        super(ReauthNeeded, self).__init__()
+        super().__init__()
 
 
 class PasscodeRequired(BaseException):
@@ -63,7 +58,7 @@ class PasscodeRequired(BaseException):
         self.fid = fid
         self.state_token = state_token
         self.provider = provider
-        super(PasscodeRequired, self).__init__()
+        super().__init__()
 
 
 class AnswerRequired(BaseException):
@@ -72,14 +67,14 @@ class AnswerRequired(BaseException):
     def __init__(self, factor, state_token):
         self.factor = factor
         self.state_token = state_token
-        super(AnswerRequired, self).__init__()
+        super().__init__()
 
 
 class OktaVerifyRequired(BaseException):
     """OktaVerify Authentication Is Required."""
 
 
-class Okta(object):
+class Okta:
     """Base Okta Login Object with MFA handling.
 
     This base login object handles connecting to Okta, authenticating a user,
@@ -90,8 +85,10 @@ class Okta(object):
     See OktaSaml for a more useful object.
     """
 
-    def __init__(self, organization, username, password, duo_factor=None,
-                 oktapreview=False):
+    def __init__(
+        self, organization, username, password, duo_factor=None,
+        oktapreview=False,
+    ):
         if organization and "https://" not in organization:
             if oktapreview:
                 url = PREVIEW_BASE_URL.format(organization=organization)
@@ -101,7 +98,7 @@ class Okta(object):
         else:
             self.base_url = organization
 
-        LOG.debug('Base URL Set to: {url}'.format(url=self.base_url))
+        LOG.debug(f'Base URL Set to: {self.base_url}')
 
         # Validate the inputs are reasonably sane
         for input_value in (organization, username, password):
@@ -128,17 +125,22 @@ class Okta(object):
         Returns:
             The response in dict form.
         """
-        headers = {'Accept': 'application/json',
-                   'Content-Type': 'application/json'}
+        headers = {
+            'Accept': 'application/json',
+            'User-Agent': f"aws_okta_keyman/{__version__}",
+            'Content-Type': 'application/json',
+        }
 
         if path.startswith('http'):
             url = path
         else:
-            url = '{base}/api/v1{path}'.format(base=self.base_url, path=path)
+            url = f'{self.base_url}/api/v1{path}'
 
-        resp = self.session.post(url=url, headers=headers, json=data,
-                                 allow_redirects=False,
-                                 cookies={'sid': self.session_token})
+        resp = self.session.post(
+            url=url, headers=headers, json=data,
+            allow_redirects=False,
+            cookies={'sid': self.session_token},
+        )
 
         resp.raise_for_status()
         resp_obj = resp.json()
@@ -159,12 +161,17 @@ class Okta(object):
             return
         first_name = ret['_embedded']['user']['profile']['firstName']
         last_name = ret['_embedded']['user']['profile']['lastName']
-        LOG.info('Successfully authed {first_name} {last_name}'.format(
-            first_name=first_name, last_name=last_name))
+        LOG.info(
+            'Successfully authed {first_name} {last_name}'.format(
+                first_name=first_name, last_name=last_name,
+            ),
+        )
 
         LOG.debug('Long-lived token needed; requesting Okta API token')
-        resp = self._request('/sessions',
-                             {'sessionToken': ret['sessionToken']})
+        resp = self._request(
+            '/sessions',
+            {'sessionToken': ret['sessionToken']},
+        )
         self.session_token = resp['id']
 
     def validate_mfa(self, fid, state_token, passcode):
@@ -231,10 +238,12 @@ class Okta(object):
         Returns:
             Dict (JSON) of the API call response
         """
-        path = '/authn/factors/{fid}/verify'.format(fid=fid)
-        data = {'fid': fid,
-                'stateToken': state_token,
-                resp_type: user_response}
+        path = f'/authn/factors/{fid}/verify'
+        data = {
+            'fid': fid,
+            'stateToken': state_token,
+            resp_type: user_response,
+        }
         try:
             return self._request(path, data)
         except requests.exceptions.HTTPError as err:
@@ -266,9 +275,11 @@ class Okta(object):
             Bool for success or failure of the MFA
         """
         LOG.warning('Okta Verify Push being sent...')
-        path = '/authn/factors/{fid}/verify'.format(fid=fid)
-        data = {'fid': fid,
-                'stateToken': state_token}
+        path = f'/authn/factors/{fid}/verify'
+        data = {
+            'fid': fid,
+            'stateToken': state_token,
+        }
         ret = self._request(path, data)
 
         ret = self.mfa_wait_loop(ret, data)
@@ -312,9 +323,11 @@ class Okta(object):
         if self.duo_factor == "passcode" and not passcode:
             raise duo.PasscodeRequired(fid, state_token)
 
-        path = '/authn/factors/{fid}/verify'.format(fid=fid)
-        data = {'fid': fid,
-                'stateToken': state_token}
+        path = f'/authn/factors/{fid}/verify'
+        data = {
+            'fid': fid,
+            'stateToken': state_token,
+        }
         ret = self._request(path, data)
         verification = ret['_embedded']['factor']['_embedded']['verification']
 
@@ -338,10 +351,11 @@ class Okta(object):
 
         if auth is not None:
             self.mfa_callback(auth, verification, state_token)
-            ret = self.mfa_wait_loop(ret, data)
-            if ret:
-                self.set_token(ret)
-                return True
+
+        ret = self.mfa_wait_loop(ret, data)
+        if ret:
+            self.set_token(ret)
+            return True
         return None
 
     def mfa_wait_loop(self, ret, data, sleep=2):
@@ -396,8 +410,10 @@ class Okta(object):
             session_cookie#visit-an-embed-link-with-the-session-token
         """
         path = '/authn'
-        data = {'username': self.username,
-                'password': self.password}
+        data = {
+            'username': self.username,
+            'password': self.password,
+        }
         if state_token:
             data = {'stateToken': state_token}
         try:
@@ -414,8 +430,11 @@ class Okta(object):
             return None
 
         if status in ('MFA_ENROLL', 'MFA_ENROLL_ACTIVATE'):
-            LOG.warning('User {u} needs to enroll in 2FA first'.format(
-                u=self.username))
+            LOG.warning(
+                'User {u} needs to enroll in 2FA first'.format(
+                    u=self.username,
+                ),
+            )
 
         if status in ('MFA_REQUIRED', 'MFA_CHALLENGE'):
             return self.handle_mfa_response(ret)
@@ -447,8 +466,11 @@ class Okta(object):
                 response_factors.append(factor)
 
         if len(response_factors) + len(push_factors) == 0:
-            LOG.debug("Factors from Okta: {}".format(
-                ret['_embedded']['factors']))
+            LOG.debug(
+                "Factors from Okta: {}".format(
+                    ret['_embedded']['factors'],
+                ),
+            )
             LOG.fatal('No supported MFA types found')
             raise UnknownError('No supported MFA types found')
 
@@ -494,13 +516,13 @@ class Okta(object):
             if factor['factorType'] == 'sms':
                 self.request_otp(factor['id'], state_token, 'SMS')
                 phone = factor['profile']['phoneNumber']
-                otp_provider = "SMS ({})".format(phone)
+                otp_provider = f"SMS ({phone})"
                 otp_factor = factor['id']
                 break
             if factor['factorType'] == 'call':
                 self.request_otp(factor['id'], state_token, 'phone call')
                 phone = factor['profile']['phoneNumber']
-                otp_provider = "call ({})".format(phone)
+                otp_provider = f"call ({phone})"
                 otp_factor = factor['id']
                 break
             if factor['factorType'] == 'question':
@@ -513,7 +535,8 @@ class Okta(object):
             raise PasscodeRequired(
                 fid=otp_factor,
                 state_token=state_token,
-                provider=otp_provider)
+                provider=otp_provider,
+            )
 
     def request_otp(self, fid, state_token, otp_type):
         """Trigger an OTP call, SMS, or other and return
@@ -526,10 +549,12 @@ class Okta(object):
             state_token: State Token allowing us to trigger the push
             otp_type: String shown in log for OTP type
         """
-        LOG.warning("Okta {} being requested...".format(otp_type))
-        path = '/authn/factors/{fid}/verify'.format(fid=fid)
-        data = {'fid': fid,
-                'stateToken': state_token}
+        LOG.warning(f"Okta {otp_type} being requested...")
+        path = f'/authn/factors/{fid}/verify'
+        data = {
+            'fid': fid,
+            'stateToken': state_token,
+        }
         self._request(path, data)
 
     def get_aws_apps(self):
@@ -539,19 +564,26 @@ class Okta(object):
         Returns: Dict of AWS account IDs and names
         """
         path = "/users/me/appLinks"
-        headers = {'Accept': 'application/json',
-                   'Content-Type': 'application/json'}
-        url = '{base}/api/v1{path}'.format(base=self.base_url, path=path)
+        headers = {
+            'Accept': 'application/json',
+            'User-Agent': f"aws_okta_keyman/{__version__}",
+            'Content-Type': 'application/json',
+        }
+        url = f'{self.base_url}/api/v1{path}'
         cookies = {'sid': self.session_token}
 
-        resp = self.session.get(url=url, headers=headers,
-                                allow_redirects=False, cookies=cookies)
+        resp = self.session.get(
+            url=url, headers=headers,
+            allow_redirects=False, cookies=cookies,
+        )
         resp_obj = resp.json()
 
         resp.raise_for_status()
 
-        aws_list = {i['label']: i['linkUrl'] for i in resp_obj
-                    if i['appName'] == 'amazon_aws'}
+        aws_list = {
+            i['label']: i['linkUrl'] for i in resp_obj
+            if i['appName'] == 'amazon_aws'
+        }
 
         accounts = []
         for key, val in aws_list.items():
@@ -568,14 +600,19 @@ class Okta(object):
             state_token: String Okta state token
         """
         app = verification['signature'].split(":")[1]
-        response_sig = "{}:{}".format(auth, app)
+        response_sig = f"{auth}:{app}"
         callback_params = "stateToken={}&sig_response={}".format(
-            state_token, response_sig)
+            state_token, response_sig,
+        )
 
         url = "{}?{}".format(
             verification['_links']['complete']['href'],
-            callback_params)
+            callback_params,
+        )
         ret = self.session.post(url)
         if ret.status_code != 200:
-            raise Exception("Bad status from Okta callback {}".format(
-                ret.status_code))
+            raise Exception(
+                "Bad status from Okta callback {}".format(
+                    ret.status_code,
+                ),
+            )

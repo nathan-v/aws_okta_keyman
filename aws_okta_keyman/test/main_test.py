@@ -1,14 +1,7 @@
-from __future__ import unicode_literals
-
-import sys
 import unittest
+from unittest import mock
 
 import aws_okta_keyman
-
-if sys.version_info[0] < 3:  # Python 2
-    import mock
-else:
-    from unittest import mock
 
 
 class MainTest(unittest.TestCase):
@@ -21,5 +14,5 @@ class MainTest(unittest.TestCase):
 
         keyman_mock.assert_has_calls([
             mock.call(mock.ANY),
-            mock.call().main()
+            mock.call().main(),
         ])

@@ -1,0 +1,63 @@
+default_language_version:
+    python: python3.8
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.0.1
+    hooks:
+    -   id: check-docstring-first
+    -   id: check-executables-have-shebangs
+    -   id: check-json
+    -   id: check-merge-conflict
+    -   id: check-yaml
+    -   id: debug-statements
+    -   id: end-of-file-fixer
+    -   id: trailing-whitespace
+-   repo: https://gitlab.com/pycqa/flake8
+    rev: 3.9.2
+    hooks:
+    -   id: flake8
+        additional_dependencies:
+        -   flake8-bugbear==20.1.4
+        -   flake8-builtins==1.5.3
+        -   flake8-comprehensions==3.2.3
+        -   flake8-tidy-imports==4.1.0
+-   repo: https://github.com/pre-commit/mirrors-autopep8
+    rev: v1.5.7
+    hooks:
+    -   id: autopep8
+-   repo: https://github.com/asottile/add-trailing-comma
+    rev: v2.2.1
+    hooks:
+    -   id: add-trailing-comma
+        args: [--py36-plus]
+-   repo: https://github.com/asottile/pyupgrade
+    rev: v2.29.1
+    hooks:
+    -   id: pyupgrade
+        args: [--py38-plus]
+-   repo: https://github.com/asottile/reorder_python_imports
+    rev: v2.6.0
+    hooks:
+    -   id: reorder-python-imports
+        args: [--py38-plus]
+-   repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v0.910-1
+    hooks:
+    -   id: mypy
+        additional_dependencies:
+        -   --no-compile
+        -   types-click==7.1.8
+        -   types-flask==1.1.6
+        -   types-futures==3.3.7
+        -   types-jinja2==2.11.9
+        -   types-markupsafe==1.1.10
+        -   types-protobuf==0.1.14
+        -   types-pyyaml==5.4.12
+        -   types-requests==2.27.7
+        -   types-ujson==0.1.1
+        -   types-urllib3==1.26.7
+        -   types-werkzeug==1.0.9
+-   repo: https://github.com/pre-commit/pygrep-hooks
+    rev: v1.9.0
+    hooks:
+    -   id: python-use-type-annotations

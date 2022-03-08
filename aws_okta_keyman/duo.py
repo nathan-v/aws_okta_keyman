@@ -12,17 +12,12 @@
 #
 # Copyright 2018 Nathan V
 """All the Duo things."""
-
-import sys
 import time
+from http.server import BaseHTTPRequestHandler
+from http.server import HTTPServer
 from multiprocessing import Process
 
 import requests
-
-if sys.version_info[0] < 3:  # pragma: no cover
-    from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
-else:  # pragma: no cover
-    from http.server import HTTPServer, BaseHTTPRequestHandler
 
 
 class PasscodeRequired(BaseException):
@@ -31,7 +26,7 @@ class PasscodeRequired(BaseException):
     def __init__(self, factor, state_token):
         self.factor = factor
         self.state_token = state_token
-        super(PasscodeRequired, self).__init__()
+        super().__init__()
 
 
 class FactorRequired(BaseException):
@@ -40,17 +35,17 @@ class FactorRequired(BaseException):
     def __init__(self, factor, state_token):
         self.factor = factor
         self.state_token = state_token
-        super(FactorRequired, self).__init__()
+        super().__init__()
 
 
-class QuietHandler(BaseHTTPRequestHandler, object):
+class QuietHandler(BaseHTTPRequestHandler):
     """We have to do this HTTP sever silliness because the Duo widget has to be
     presented over HTTP or HTTPS or the callback won't work.
     """
 
     def __init__(self, html, *args):
         self.html = html
-        super(QuietHandler, self).__init__(*args)
+        super().__init__(*args)
 
     def log_message(self, _format, *args):
         """Mute the server log."""
@@ -90,9 +85,11 @@ class Duo:
         <input type="hidden" name="stateToken" value="{tkn}" /></form>
         <script src="{scr}"></script><script>Duo.init(
           {{'host': '{hst}','sig_request': '{sig}','post_action': '{cb}'}}
-        );</script>'''.format(tkn=self.token, scr=script,
-                              hst=host, sig=sig,
-                              cb=callback)
+        );</script>'''.format(
+            tkn=self.token, scr=script,
+            hst=host, sig=sig,
+            cb=callback,
+        )
 
         proc = Process(target=self.duo_webserver)
         proc.start()
@@ -107,7 +104,7 @@ class Duo:
 
     def handler_with_html(self, *args):
         """Call the handler and include the HTML."""
-        QuietHandler(self.html, *args)
+        return QuietHandler(self.html, *args)
 
     def trigger_duo(self, passcode=""):
         """Try to get a Duo Push without needing an iframe
@@ -143,14 +140,15 @@ class Duo:
         txid = self.details['signature'].split(":")[0]
         fake_path = 'http://0.0.0.0:3000/duo&v=2.1'
         url = "https://{}/frame/web/v1/auth?tx={}&parent={}".format(
-            self.details['host'], txid, fake_path)
+            self.details['host'], txid, fake_path,
+        )
 
         if sid and certs_url:
             self.session.params = {sid: sid, certs_url: certs_url}
 
         self.session.headers = {
             'Origin': "https://{}".format(self.details['host']),
-            'Content-Type': "application/x-www-form-urlencoded"
+            'Content-Type': "application/x-www-form-urlencoded",
         }
 
         ret = self.session.post(url, allow_redirects=False)
@@ -185,17 +183,18 @@ class Duo:
         self.session.headers = {
             'Origin': "https://{}".format(self.details['host']),
             'Content-Type': "application/x-www-form-urlencoded",
-            'X-Requested-With': 'XMLHttpRequest'
+            'X-Requested-With': 'XMLHttpRequest',
         }
 
         params = (
             "sid={}&device=phone1&"
-            "factor={}&out_of_date=False").format(sid, factor)
+            "factor={}&out_of_date=False"
+        ).format(sid, factor)
 
         if passcode:
-            params = "{}&passcode={}".format(params, passcode)
+            params = f"{params}&passcode={passcode}"
 
-        url = "{}?{}".format(url, params)
+        url = f"{url}?{params}"
 
         ret = self.session.post(url)
         return ret.json()['response']['txid']
@@ -214,12 +213,12 @@ class Duo:
         self.session.headers = {
             'Origin': "https://{}".format(self.details['host']),
             'Content-Type': "application/x-www-form-urlencoded",
-            'X-Requested-With': 'XMLHttpRequest'
+            'X-Requested-With': 'XMLHttpRequest',
         }
 
-        params = "sid={}&txid={}".format(sid, transaction_id)
+        params = f"sid={sid}&txid={transaction_id}"
 
-        url = "{}?{}".format(url, params)
+        url = f"{url}?{params}"
 
         tries = 0
         auth = None
@@ -228,8 +227,11 @@ class Duo:
             ret = self.session.post(url)
 
             if ret.status_code != 200:
-                raise Exception("Push request failed with status {}".format(
-                    ret.status_code))
+                raise Exception(
+                    "Push request failed with status {}".format(
+                        ret.status_code,
+                    ),
+                )
 
             result = ret.json()
 
@@ -238,7 +240,8 @@ class Duo:
                     auth = result['response']['cookie']
                 elif 'result_url' in result['response']:
                     auth = self.do_redirect(
-                        result['response']['result_url'], sid)
+                        result['response']['result_url'], sid,
+                    )
 
             time.sleep(1)
 
@@ -260,14 +263,17 @@ class Duo:
         self.session.headers = {
             'Origin': "https://{}".format(self.details['host']),
             'Content-Type': "application/x-www-form-urlencoded",
-            'X-Requested-With': 'XMLHttpRequest'
+            'X-Requested-With': 'XMLHttpRequest',
         }
 
         ret = self.session.post(url)
 
         if ret.status_code != 200:
-            raise Exception("Bad status from Duo after redirect {}".format(
-                ret.status_code))
+            raise Exception(
+                "Bad status from Duo after redirect {}".format(
+                    ret.status_code,
+                ),
+            )
 
         result = ret.json()
 
