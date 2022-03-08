@@ -4,7 +4,6 @@ from unittest import mock
 
 from aws_okta_keyman import duo
 
-
 DETAILS = {
     "host": "somehost",
     "signature": "somesig:differentsig",

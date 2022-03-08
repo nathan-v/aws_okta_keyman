@@ -31,6 +31,7 @@ workflows:
   version: 2
   test:
     jobs:
+      - test-3.10
       - test-3.9
       - test-3.8
       - test-3.7
@@ -61,3 +62,8 @@ jobs:
     <<: *3x-template
     docker:
       - image: cimg/python:3.9
+
+  test-3.10:
+    <<: *3x-template
+    docker:
+      - image: cimg/python:3.10

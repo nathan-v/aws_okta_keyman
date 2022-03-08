@@ -16,13 +16,10 @@
 import os
 import sys
 
-from setuptools import Command
-from setuptools import find_packages
-from setuptools import setup
+from setuptools import Command, find_packages, setup
 from setuptools.command.test import test as TestCommand
 
-from aws_okta_keyman.metadata import __desc__
-from aws_okta_keyman.metadata import __version__
+from aws_okta_keyman.metadata import __desc__, __version__
 
 PACKAGE = "aws_okta_keyman"
 DIR = os.path.dirname(os.path.realpath(__file__))
@@ -76,8 +73,7 @@ class PyflakesCommand(Command):
         # able to install Pyflakes if its missing. This localizes the import to
         # only after the setuptools code has run and verified everything is
         # installed.
-        from pyflakes import api
-        from pyflakes import reporter
+        from pyflakes import api, reporter
 
         # Run the Pyflakes check against our package and check its output
         val = api.checkRecursive([PACKAGE], reporter._makeDefaultReporter())

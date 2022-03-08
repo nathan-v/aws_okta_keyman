@@ -6,7 +6,6 @@ import botocore
 
 from aws_okta_keyman import aws
 
-
 AWS_HTML_MULTIACCOUNT_LOGIN = (
     "<!DOCTYPE html><html><head><title>Amazon Web Services Sign-In</title>"
     '</head><body><div id="container"><h1 class="background">'

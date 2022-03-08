@@ -7,11 +7,8 @@ import botocore
 import keyring
 import requests
 
-from aws_okta_keyman import aws
-from aws_okta_keyman import duo
-from aws_okta_keyman import okta
-from aws_okta_keyman.keyman import Keyman
-from aws_okta_keyman.keyman import NoAWSAccounts
+from aws_okta_keyman import aws, duo, okta
+from aws_okta_keyman.keyman import Keyman, NoAWSAccounts
 from aws_okta_keyman.metadata import __version__
 
 

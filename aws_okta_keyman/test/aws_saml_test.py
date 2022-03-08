@@ -19,7 +19,6 @@ import unittest
 
 from aws_okta_keyman.aws_saml import SamlAssertion
 
-
 idp_arn = "arn:aws:iam::1111:saml-provider/IDP"
 dev_arn = "arn:aws:iam::1111:role/DevRole"
 qa_arn = "arn:aws:iam::2222:role/QARole"

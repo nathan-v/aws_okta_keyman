@@ -13,8 +13,7 @@
 # Copyright 2018 Nathan V
 """All the Duo things."""
 import time
-from http.server import BaseHTTPRequestHandler
-from http.server import HTTPServer
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from multiprocessing import Process
 
 import requests

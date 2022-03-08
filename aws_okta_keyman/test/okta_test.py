@@ -3,10 +3,8 @@ from unittest import mock
 
 import requests
 
-from aws_okta_keyman import duo
-from aws_okta_keyman import okta
+from aws_okta_keyman import duo, okta
 from aws_okta_keyman.metadata import __version__
-
 
 # Successful response message from Okta when you have fully logged in
 SUCCESS_RESPONSE = {

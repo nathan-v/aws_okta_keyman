@@ -25,7 +25,6 @@ from bs4 import BeautifulSoup
 from aws_okta_keyman import okta
 from aws_okta_keyman.metadata import __version__
 
-
 LOG = logging.getLogger(__name__)
 
 

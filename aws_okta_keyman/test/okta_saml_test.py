@@ -3,10 +3,8 @@ from unittest import mock
 
 import requests
 
-from aws_okta_keyman.okta import ReauthNeeded
-from aws_okta_keyman.okta import UnknownError
+from aws_okta_keyman.okta import ReauthNeeded, UnknownError
 from aws_okta_keyman.okta_saml import OktaSaml
-
 
 EXAMPLE_ASSERTION = (
     '<!DOCTYPE html><html lang="en"><body id="app" class="enduser-app">'

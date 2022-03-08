@@ -29,15 +29,10 @@ import botocore
 import keyring
 import requests
 
-from aws_okta_keyman import aws
-from aws_okta_keyman import okta
-from aws_okta_keyman import okta_saml
+from aws_okta_keyman import aws, okta, okta_saml
 from aws_okta_keyman.config import Config
-from aws_okta_keyman.duo import FactorRequired
-from aws_okta_keyman.duo import PasscodeRequired
-from aws_okta_keyman.metadata import __desc__
-from aws_okta_keyman.metadata import __version__
-
+from aws_okta_keyman.duo import FactorRequired, PasscodeRequired
+from aws_okta_keyman.metadata import __desc__, __version__
 
 LOG = logging.getLogger(__name__)
 
