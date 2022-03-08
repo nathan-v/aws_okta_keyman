@@ -14,17 +14,11 @@ tests: &tests
     pytest --cov=aws_okta_keyman -v
     codecov
 
-pycodestyle: &pycodestyle
-    name: pycodestyle
+pycodestyle: &codechecks
+    name: black
     command: |
       . venv/bin/activate
-      python setup.py pycodestyle
-
-pyflakes: &pyflakes
-    name: pyflakes
-    command: |
-      . venv/bin/activate
-      python setup.py pyflakes
+      pre-commit run --all-files
 
 version: 2
 workflows:
@@ -43,8 +37,7 @@ jobs:
       - checkout
       - run: *dependencies
       - run: *tests
-      - run: *pycodestyle
-      - run: *pyflakes
+      - run: *codechecks
     docker:
       - image: cimg/python:3.6
 
