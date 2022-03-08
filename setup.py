@@ -15,6 +15,7 @@
 """Setup the package."""
 import os
 import sys
+from typing import List, Tuple
 
 from setuptools import Command, find_packages, setup
 from setuptools.command.test import test as TestCommand
@@ -29,6 +30,7 @@ class PycodestyleCommand(Command):
     """Pycodestyle check."""
 
     description = "Pycodestyle Lint Checks"
+    user_options: List[Tuple[str]] = []
 
     def initialize_options(self):
         """Override to nothing."""
@@ -58,6 +60,7 @@ class PyflakesCommand(Command):
     """Pyflakes check."""
 
     description = "Pyflakes Checks"
+    user_options: List[Tuple[str]] = []
 
     def initialize_options(self):
         """Override to nothing."""
