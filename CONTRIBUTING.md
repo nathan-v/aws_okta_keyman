@@ -23,7 +23,7 @@ is a bug fix please include a regression test as well.
 
 ### Running Tests
 
-The command below will run all of the unit tests for the package with lots of details 
+The command below will run all of the unit tests for the package with lots of details
 and will spit out the current code coverage numbers. Code coverage for this project is
 high and the intent is that it stays that way.
 

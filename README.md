@@ -142,7 +142,7 @@ $ aws_okta_keyman --screen
 ----snip----
 
 14:14:04   (INFO) Assuming role: arn:aws:iam::1234567890:role/Admin
-14:14:04   (INFO) AWS Credentials: 
+14:14:04   (INFO) AWS Credentials:
 
 AWS_ACCESS_KEY_ID = AXXXXXXXXXXXXXXXXXXX
 AWS_SECRET_ACCESS_KEY = xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
@@ -162,7 +162,7 @@ key durations from a minimum of 15 minutes (900 seconds) or up to 12 hours (4320
 limits are enforced by AWS and are not a limitation of Keyman.
 
 ### AWS Console Logins
-AWS Console login links can optionally be generated when yo request keys with Keyman. 
+AWS Console login links can optionally be generated when yo request keys with Keyman.
 The console login link will be output on the screen for you to use. Just provide the `--console`
 parameter when running Keyman.
 
