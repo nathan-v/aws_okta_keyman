@@ -1,15 +1,12 @@
-# -*- coding: utf-8 -*-
 #
 # Credits: Portions of this code were copied/modified from
 # https://github.com/ThoughtWorksInc/aws_role_credentials
 #
 # Copyright (c) 2015, Peter Gillard-Moss
 # All rights reserved.
-
 # Permission to use, copy, modify, and/or distribute this software for any
 # purpose with or without fee is hereby granted, provided that the above
 # copyright notice and this permission notice appear in all copies.
-
 # THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
 # WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
 # MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
@@ -21,15 +18,12 @@
 AWS Session and Credential classes; how we record the creds and how we talk
 to AWS to get them.
 """
-from __future__ import unicode_literals
-
 import configparser
 import datetime
 import json
 import logging
 import os
 import re
-from builtins import str
 
 import boto3
 import botocore
@@ -41,10 +35,6 @@ from aws_okta_keyman.aws_saml import SamlAssertion
 LOG = logging.getLogger(__name__)
 
 
-class BaseException(Exception):
-    """Base AWS SAML Exception."""
-
-
 class InvalidSaml(BaseException):
     """Raised when the SAML Assertion is invalid for some reason."""
 
@@ -53,7 +43,7 @@ class MultipleRoles(BaseException):
     """Raised when AWS offers multiple roles."""
 
 
-class Credentials(object):
+class Credentials:
     """Simple AWS Credentials Profile representation.
 
     This object reads in an Amazon ~/.aws/credentials file, and then allows you
@@ -67,15 +57,15 @@ class Credentials(object):
         """Do all the heavy lifting to write the profile out to disk."""
         config = configparser.ConfigParser(interpolation=None)
         try:
-            config.read_file(open(self.filename, 'r'))
-        except IOError:
-            LOG.debug("Unable to open {}".format(self.filename))
+            config.read_file(open(self.filename))
+        except OSError:
+            LOG.debug(f"Unable to open {self.filename}")
 
         if not config.has_section(name):
             config.add_section(name)
 
         [(config.set(name, k, v)) for k, v in profile.items()]
-        with open(self.filename, 'w+') as configfile:
+        with open(self.filename, "w+") as configfile:
             os.chmod(self.filename, 0o600)
             config.write(configfile)
 
@@ -90,18 +80,25 @@ class Credentials(object):
         name = str(name)
         self._add_profile(
             name,
-            {'output': 'json',
-             'region': str(region),
-             'aws_access_key_id': str(creds['AccessKeyId']),
-             'aws_secret_access_key': str(creds['SecretAccessKey']),
-             'aws_security_token': str(creds['SessionToken']),
-             'aws_session_token': str(creds['SessionToken'])})
+            {
+                "output": "json",
+                "region": str(region),
+                "aws_access_key_id": str(creds["AccessKeyId"]),
+                "aws_secret_access_key": str(creds["SecretAccessKey"]),
+                "aws_security_token": str(creds["SessionToken"]),
+                "aws_session_token": str(creds["SessionToken"]),
+            },
+        )
 
-        LOG.info('Wrote profile "{name}" to {file} 💾'.format(
-            name=name, file=self.filename))
+        LOG.info(
+            'Wrote profile "{name}" to {file} 💾'.format(
+                name=name,
+                file=self.filename,
+            ),
+        )
 
 
-class Session(object):
+class Session:
     """Amazon Federated Session Generator.
 
     This class is used to contact Amazon with a specific SAML Assertion and
@@ -112,37 +109,43 @@ class Session(object):
     objects.
     """
 
-    def __init__(self,
-                 assertion,
-                 credential_path='~/.aws',
-                 profile='default',
-                 region='us-east-1',
-                 role=None,
-                 session_duration=None):
+    def __init__(
+        self,
+        assertion,
+        credential_path="~/.aws",
+        profile="default",
+        region="us-east-1",
+        role=None,
+        session_duration=None,
+    ):
         cred_dir = os.path.expanduser(credential_path)
-        cred_file = os.path.join(cred_dir, 'credentials')
+        cred_file = os.path.join(cred_dir, "credentials")
 
-        boto_logger = logging.getLogger('botocore')
+        boto_logger = logging.getLogger("botocore")
         boto_logger.setLevel(logging.WARNING)
 
         if not os.path.exists(cred_dir):
-            LOG.info('Creating missing AWS Credentials dir {dir} 📁'.format(
-                dir=cred_dir))
+            LOG.info(
+                "Creating missing AWS Credentials dir {dir} 📁".format(
+                    dir=cred_dir,
+                ),
+            )
             os.makedirs(cred_dir)
 
         self.profile = profile
         self.region = region
         boto3.setup_default_session()
-        self.sts = boto3.client('sts', region_name=self.region)
+        self.sts = boto3.client("sts", region_name=self.region)
         self.assertion = SamlAssertion(assertion)
         self.writer = Credentials(cred_file)
 
         # Populated by self.assume_role()
         self.creds = {
-            'AccessKeyId': None,
-            'SecretAccessKey': None,
-            'SessionToken': None,
-            'Expiration': None}
+            "AccessKeyId": None,
+            "SecretAccessKey": None,
+            "SessionToken": None,
+            "Expiration": None,
+        }
         self.session_token = None
         self.role = role
         if session_duration:
@@ -160,14 +163,17 @@ class Session(object):
         """
         # Consider the tokens expired when they have 10m left
         try:
-            msg = ("Session Expiration: {}  // Now: {}".format(
-                self.creds['Expiration'],
-                datetime.datetime.utcnow()))
+            msg = "Session Expiration: {}  // Now: {}".format(
+                self.creds["Expiration"],
+                datetime.datetime.utcnow(),
+            )
             LOG.debug(msg)
             offset = datetime.timedelta(seconds=600)
             now = datetime.datetime.utcnow()
-            expir = datetime.datetime.strptime(str(self.creds['Expiration']),
-                                               '%Y-%m-%d %H:%M:%S+00:00')
+            expir = datetime.datetime.strptime(
+                str(self.creds["Expiration"]),
+                "%Y-%m-%d %H:%M:%S+00:00",
+            )
 
             return (now + offset) < expir
         except (ValueError, TypeError):
@@ -180,18 +186,20 @@ class Session(object):
         multiple accounts were found
         """
         multiple_accounts = False
-        first_account = ''
+        first_account = ""
         formatted_roles = []
         for role in self.assertion.roles():
-            account = role['role'].split(':')[4]
-            role_name = role['role'].split(':')[5].split('/')[1]
-            formatted_roles.append({
-                'account': account,
-                'role_name': role_name,
-                'arn': role['role'],
-                'principle': role['principle']
-            })
-            if first_account == '':
+            account = role["role"].split(":")[4]
+            role_name = role["role"].split(":")[5].split("/")[1]
+            formatted_roles.append(
+                {
+                    "account": account,
+                    "role_name": role_name,
+                    "arn": role["role"],
+                    "principle": role["principle"],
+                },
+            )
+            if first_account == "":
                 first_account = account
             elif first_account != account:
                 multiple_accounts = True
@@ -199,13 +207,15 @@ class Session(object):
         if multiple_accounts:
             formatted_roles = self.account_ids_to_names(formatted_roles)
 
-        formatted_roles = sorted(formatted_roles,
-                                 key=lambda k: (k['account'], k['role_name']))
+        formatted_roles = sorted(
+            formatted_roles,
+            key=lambda k: (k["account"], k["role_name"]),
+        )
 
         # set the role role index after sorting
         i = 0
         for role in formatted_roles:
-            role['roleIdx'] = i
+            role["roleIdx"] = i
             i = i + 1
 
         self.roles = formatted_roles
@@ -224,26 +234,30 @@ class Session(object):
                 raise MultipleRoles
             self.role = 0
 
-        LOG.info('Assuming role: {}'.format(self.roles[self.role]['arn']))
+        LOG.info("Assuming role: {}".format(self.roles[self.role]["arn"]))
 
         try:
             session = self.sts.assume_role_with_saml(
-                RoleArn=self.roles[self.role]['arn'],
-                PrincipalArn=self.roles[self.role]['principle'],
+                RoleArn=self.roles[self.role]["arn"],
+                PrincipalArn=self.roles[self.role]["principle"],
                 SAMLAssertion=self.assertion.encode(),
-                DurationSeconds=self.duration)
+                DurationSeconds=self.duration,
+            )
         except botocore.exceptions.ClientError:
             # Try again with the default duration
-            msg = ("Error assuming session with duration "
-                   "{}. Retrying with 3600.".format(self.duration))
+            msg = (
+                "Error assuming session with duration "
+                "{}. Retrying with 3600.".format(self.duration)
+            )
             LOG.warning(msg)
             session = self.sts.assume_role_with_saml(
-                RoleArn=self.roles[self.role]['arn'],
-                PrincipalArn=self.roles[self.role]['principle'],
+                RoleArn=self.roles[self.role]["arn"],
+                PrincipalArn=self.roles[self.role]["principle"],
                 SAMLAssertion=self.assertion.encode(),
-                DurationSeconds=3600)
+                DurationSeconds=3600,
+            )
 
-        self.creds = session['Credentials']
+        self.creds = session["Credentials"]
 
         if print_only:
             self._print_creds()
@@ -255,58 +269,74 @@ class Session(object):
         self.writer.add_profile(
             name=self.profile,
             region=self.region,
-            creds=self.creds)
-        LOG.info('Current time is {time}'.format(
-            time=datetime.datetime.utcnow()))
-        LOG.info('Session expires at {time} ⏳'.format(
-            time=self.creds['Expiration']))
+            creds=self.creds,
+        )
+        LOG.info(
+            "Current time is {time}".format(
+                time=datetime.datetime.utcnow(),
+            ),
+        )
+        LOG.info(
+            "Session expires at {time} ⏳".format(
+                time=self.creds["Expiration"],
+            ),
+        )
 
     def _print_creds(self):
-        """ Print out the retrieved credentials to the screen
-        """
-        cred_str = "AWS_ACCESS_KEY_ID = {}\n".format(self.creds['AccessKeyId'])
+        """Print out the retrieved credentials to the screen"""
+        cred_str = "AWS_ACCESS_KEY_ID = {}\n".format(self.creds["AccessKeyId"])
         cred_str = "{}AWS_SECRET_ACCESS_KEY = {}\n".format(
-            cred_str, self.creds['SecretAccessKey'])
+            cred_str,
+            self.creds["SecretAccessKey"],
+        )
         cred_str = "{}AWS_SESSION_TOKEN = {}".format(
-            cred_str, self.creds['SessionToken'])
-        LOG.info("AWS Credentials: \n\n\n{}\n\n".format(cred_str))
+            cred_str,
+            self.creds["SessionToken"],
+        )
+        LOG.info(f"AWS Credentials: \n\n\n{cred_str}\n\n")
 
     def generate_aws_console_url(self, issuer):
-        """ Generate a URL for logging into the AWS console with the current
+        """Generate a URL for logging into the AWS console with the current
         session key
 
         Returns: string URL for console login
         """
-        creds = {'sessionId': self.creds['AccessKeyId'],
-                 'sessionKey': self.creds['SecretAccessKey'],
-                 'sessionToken': self.creds['SessionToken']}
+        creds = {
+            "sessionId": self.creds["AccessKeyId"],
+            "sessionKey": self.creds["SecretAccessKey"],
+            "sessionToken": self.creds["SessionToken"],
+        }
 
-        params = {'Action': 'getSigninToken',
-                  'SessionDuration': self.duration,
-                  'Session': json.dumps(creds)}
+        params = {
+            "Action": "getSigninToken",
+            "SessionDuration": self.duration,
+            "Session": json.dumps(creds),
+        }
 
         token_url = "https://signin.aws.amazon.com/federation"
         resp = requests.get(token_url, params=params)
-        token = resp.json()['SigninToken']
+        token = resp.json()["SigninToken"]
 
-        console_url = 'https%3A//console.aws.amazon.com/'
-        params = ("?Action=login&Issuer={}&Destination={}"
-                  "&SigninToken={}").format(issuer, console_url, token)
+        console_url = "https%3A//console.aws.amazon.com/"
+        params = ("?Action=login&Issuer={}&Destination={}" "&SigninToken={}").format(
+            issuer,
+            console_url,
+            token,
+        )
 
-        url = "https://signin.aws.amazon.com/federation{}".format(params)
+        url = f"https://signin.aws.amazon.com/federation{params}"
         return url
 
     def export_creds_to_var_string(self):
-        """ Export the current credentials as environment vaiables
-        """
+        """Export the current credentials as environment vaiables"""
         var_string = (
             "export AWS_ACCESS_KEY_ID={}; "
             "export AWS_SECRET_ACCESS_KEY={}; "
             "export AWS_SESSION_TOKEN={};"
         ).format(
-            self.creds['AccessKeyId'],
-            self.creds['SecretAccessKey'],
-            self.creds['SessionToken']
+            self.creds["AccessKeyId"],
+            self.creds["SecretAccessKey"],
+            self.creds["SessionToken"],
         )
         return var_string
 
@@ -321,39 +351,41 @@ class Session(object):
         try:
             accounts = self.get_account_name_map()
         except Exception:
-            msg = ('Error retrieving AWS account name/ID map. '
-                   'Falling back to just account IDs')
+            msg = (
+                "Error retrieving AWS account name/ID map. "
+                "Falling back to just account IDs"
+            )
             LOG.warning(msg)
             return roles
         for role in roles:
-            role['account'] = accounts[role['account']]
-        LOG.debug("AWS roles with friendly names: {}".format(accounts))
+            role["account"] = accounts[role["account"]]
+        LOG.debug(f"AWS roles with friendly names: {accounts}")
         return roles
 
     def get_account_name_map(self):
-        """ Get the friendly to ID mappings from AWS via hacktastic HTML
+        """Get the friendly to ID mappings from AWS via hacktastic HTML
 
         Returns: Dict of account numbers with names
         """
-        url = 'https://signin.aws.amazon.com/saml'
-        headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-        data = {'SAMLResponse': self.assertion.encode()}
+        url = "https://signin.aws.amazon.com/saml"
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
+        data = {"SAMLResponse": self.assertion.encode()}
         resp = requests.post(url=url, headers=headers, data=data)
         resp.raise_for_status()
         return self.account_names_from_html(resp.text)
 
     @staticmethod
     def account_names_from_html(html):
-        """ Parse the AWS SAML login page HTML for account numbers and names
+        """Parse the AWS SAML login page HTML for account numbers and names
 
         Returns: Dict of the account numbers and names
         """
         accounts = {}
-        soup = bs4.BeautifulSoup(html, 'html.parser')
-        for account in soup.find_all('div', {'class': 'saml-account-name'}):
+        soup = bs4.BeautifulSoup(html, "html.parser")
+        for account in soup.find_all("div", {"class": "saml-account-name"}):
             name_string = account.text
             a_id = re.match(r".*\((\d+)\)", name_string).group(1)
             a_name = re.match(r"\S+\s(\S+)", name_string).group(1)
             accounts[a_id] = a_name
-        LOG.debug("AWS account map: {}".format(accounts))
+        LOG.debug(f"AWS account map: {accounts}")
         return accounts

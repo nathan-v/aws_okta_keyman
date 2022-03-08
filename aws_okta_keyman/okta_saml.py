@@ -19,8 +19,8 @@ import base64
 import logging
 import re
 
-import bs4
 import requests
+from bs4 import BeautifulSoup
 
 from aws_okta_keyman import okta
 from aws_okta_keyman.metadata import __version__
@@ -41,11 +41,11 @@ class OktaSaml(okta.Okta):
 
         Returns: String of the assertion
         """
-        assertion = ''
-        soup = bs4.BeautifulSoup(html, 'html.parser')
-        for inputtag in soup.find_all('input'):
-            if inputtag.get('name') == 'SAMLResponse':
-                assertion = inputtag.get('value')
+        assertion = ""
+        soup = BeautifulSoup(html, "html.parser")
+        for inputtag in soup.find_all("input"):
+            if inputtag.get("name") == "SAMLResponse":
+                assertion = inputtag.get("value")
         return base64.b64decode(assertion)
 
     @staticmethod
@@ -57,12 +57,12 @@ class OktaSaml(okta.Okta):
 
         Returns: String error from the HTML
         """
-        err = ''
-        soup = bs4.BeautifulSoup(resp.text, 'html.parser')
+        err = ""
+        soup = BeautifulSoup(resp.text, "html.parser")
         for err_div in soup.find_all("div", {"class": "error-content"}):
-            err = err_div.select('h1')[0].text.strip()
-        if err == '':
-            err = 'Unknown error'
+            err = err_div.select("h1")[0].text.strip()
+        if err == "":
+            err = "Unknown error"
         return err
 
     @staticmethod
@@ -79,8 +79,8 @@ class OktaSaml(okta.Okta):
         match = re.search("var stateToken = \\'(.{,50})\\'", str(html))
 
         # Clean it up (result like '00n-DFVdfv-dgfhjgndfdfBVFV')
-        token = match.group(1).replace('\\\\x2D', '-')
-        token = token.replace('\\x2D', '-')
+        token = match.group(1).replace("\\\\x2D", "-")
+        token = token.replace("\\x2D", "-")
         return token
 
     def get_assertion(self, appid):
@@ -90,21 +90,22 @@ class OktaSaml(okta.Okta):
 
         Returns: String SAML response
         """
-        path = '{url}/home/amazon_aws/{appid}'.format(
-            url=self.base_url, appid=appid,
+        path = "{url}/home/amazon_aws/{appid}".format(
+            url=self.base_url,
+            appid=appid,
         )
         headers = {
-            'Accept': 'application/json',
-            'User-Agent': f"aws_okta_keyman/{__version__}",
-            'Content-Type': 'application/json',
+            "Accept": "application/json",
+            "User-Agent": f"aws_okta_keyman/{__version__}",
+            "Content-Type": "application/json",
         }
         resp = self.session.get(
             path,
-            cookies={'sid': self.session_token},
+            cookies={"sid": self.session_token},
             headers=headers,
         )
 
-        if 'second-factor' in resp.url:
+        if "second-factor" in resp.url:
             try:
                 state_token = self.get_state_token_from_html(resp.text)
                 LOG.debug("Redirected; reuathing with new token")
@@ -124,14 +125,14 @@ class OktaSaml(okta.Okta):
                 LOG.fatal("404 calling ")
             else:
                 LOG.error(
-                    'Unknown error: {msg}'.format(
+                    "Unknown error: {msg}".format(
                         msg=str(err.response.__dict__),
                     ),
                 )
             raise okta.UnknownError()
 
         assertion = self.assertion(resp.text)
-        if assertion == b'':
+        if assertion == b"":
             error = self.get_okta_error_from_response(resp)
             LOG.fatal(error)
             raise okta.UnknownError()

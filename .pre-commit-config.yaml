@@ -21,6 +21,7 @@ repos:
         -   flake8-builtins==1.5.3
         -   flake8-comprehensions==3.2.3
         -   flake8-tidy-imports==4.1.0
+        -   flake8-black==0.3.2
 -   repo: https://github.com/pre-commit/mirrors-autopep8
     rev: v1.5.7
     hooks:
@@ -46,17 +47,10 @@ repos:
     -   id: mypy
         additional_dependencies:
         -   --no-compile
-        -   types-click==7.1.8
-        -   types-flask==1.1.6
-        -   types-futures==3.3.7
-        -   types-jinja2==2.11.9
-        -   types-markupsafe==1.1.10
-        -   types-protobuf==0.1.14
         -   types-pyyaml==5.4.12
         -   types-requests==2.27.7
-        -   types-ujson==0.1.1
-        -   types-urllib3==1.26.7
-        -   types-werkzeug==1.0.9
+        -   types-botocore==1.0.1
+        -   types-boto3==1.0.1
 -   repo: https://github.com/pre-commit/pygrep-hooks
     rev: v1.9.0
     hooks:
