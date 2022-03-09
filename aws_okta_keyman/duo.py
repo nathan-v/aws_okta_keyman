@@ -10,7 +10,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Copyright 2018 Nathan V
+# Copyright 2022 Nathan V
 """All the Duo things."""
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer

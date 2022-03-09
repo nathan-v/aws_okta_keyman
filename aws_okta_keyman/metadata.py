@@ -11,8 +11,8 @@
 # limitations under the License.
 #
 # Copyright 2018 Nextdoor.com, Inc
-# Copyright 2018 Nathan V
+# Copyright 2022 Nathan V
 """Package metadata."""
 
-__version__ = "0.8.6"
+__version__ = "0.9.0"
 __desc__ = "AWS Okta Keyman"

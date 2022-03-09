@@ -12,7 +12,7 @@
 # limitations under the License.
 #
 # Copyright 2018 Nextdoor.com, Inc
-# Copyright 2018 Nathan V
+# Copyright 2022 Nathan V
 """Main function that passes off to the Keyman module."""
 import logging
 import sys
