@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: UTF-8 -*-
-
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -14,10 +12,8 @@
 # limitations under the License.
 #
 # Copyright 2018 Nextdoor.com, Inc
-# Copyright 2018 Nathan V
+# Copyright 2022 Nathan V
 """This module contains the primary logic of the tool."""
-from __future__ import unicode_literals
-
 import getpass
 import logging
 import os
@@ -27,7 +23,7 @@ import sys
 import time
 import traceback
 import xml
-from builtins import input
+from http.client import HTTPConnection
 
 import botocore
 import keyring
@@ -35,9 +31,8 @@ import requests
 
 from aws_okta_keyman import aws, okta, okta_saml
 from aws_okta_keyman.config import Config
+from aws_okta_keyman.duo import FactorRequired, PasscodeRequired
 from aws_okta_keyman.metadata import __desc__, __version__
-from aws_okta_keyman.duo import PasscodeRequired, FactorRequired
-
 
 LOG = logging.getLogger(__name__)
 
@@ -52,7 +47,7 @@ class Keyman:
     def __init__(self, argv):
         self.okta_client = None
         self.log = LOG
-        self.log.info('{} 🔐 v{}'.format(__desc__, __version__))
+        self.log.info(f"{__desc__} 🔐 v{__version__}")
         self.config = Config(argv)
         self.role = None
         try:
@@ -62,6 +57,7 @@ class Keyman:
             sys.exit(1)
         if self.config.debug:
             self.log.setLevel(logging.DEBUG)
+            self.debug_requests_on()
 
     def main(self):
         """Execute primary logic path."""
@@ -93,17 +89,17 @@ class Keyman:
                 sys.exit(result)
 
         except NoAWSAccounts:
-            self.log.fatal('No configured or assigned AWS apps found 🛑')
+            self.log.fatal("No configured or assigned AWS apps found 🛑")
             sys.exit(6)
 
         except KeyboardInterrupt:
             # Allow users to exit cleanly at any time.
-            print('')
-            self.log.info('Exiting after keyboard interrupt. 🛑')
+            print("")
+            self.log.info("Exiting after keyboard interrupt. 🛑")
             sys.exit(1)
 
         except Exception as err:
-            msg = '😬 Unhandled exception: {}'.format(err)
+            msg = f"😬 Unhandled exception: {err}"
             self.log.fatal(msg)
             self.log.debug(traceback.format_exc())
             sys.exit(5)
@@ -113,32 +109,47 @@ class Keyman:
         """Wrap input() making testing support of py2 and py3 easier."""
         return input(text).strip()
 
+    def debug_requests_on(self):
+        """Switches on logging of the requests module."""
+        HTTPConnection.debuglevel = 1
+
+        logging.basicConfig()
+        logging.getLogger().setLevel(logging.DEBUG)
+        requests_log = logging.getLogger("requests.packages.urllib3")
+        requests_log.setLevel(logging.DEBUG)
+        requests_log.propagate = True
+
     def user_password(self):
         """Wrap getpass to simplify testing."""
         password = None
         if self.config.password_cache:
-            self.log.debug('Password cache enabled')
+            self.log.debug("Password cache enabled")
             try:
                 keyring.get_keyring()
-                password = keyring.get_password('aws_okta_keyman',
-                                                self.config.username)
+                password = keyring.get_password(
+                    "aws_okta_keyman",
+                    self.config.username,
+                )
             except keyring.errors.InitError:
-                msg = 'Password cache enabled but no keyring available.'
+                msg = "Password cache enabled but no keyring available."
                 self.log.warning(msg)
                 password = getpass.getpass()
 
             if self.config.password_reset or password is None:
-                self.log.debug('Password not in cache or reset requested')
+                self.log.debug("Password not in cache or reset requested")
                 password = getpass.getpass()
-                keyring.set_password('aws_okta_keyman', self.config.username,
-                                     password)
+                keyring.set_password(
+                    "aws_okta_keyman",
+                    self.config.username,
+                    password,
+                )
         else:
             password = getpass.getpass()
         return password
 
     @staticmethod
     def generate_template(data, header_map):
-        """ Generates a string template for printing a table using the data and
+        """Generates a string template for printing a table using the data and
         header to define the column names and widths
 
         Args:
@@ -155,18 +166,23 @@ class Keyman:
             if len(col[col_key]) + 2 > col_wid:
                 col_wid = len(col[col_key]) + 2
             widths.append([col_key, col_wid])
-        template = ''
+        template = ""
         for col in widths:
-            if template == '':
-                template = "{}{}:{}{}".format('{', col[0], col[1], '}')
+            if template == "":
+                template = "{}{}:{}{}".format("{", col[0], col[1], "}")
             else:
-                template = "{}{}{}:{}{}".format(template,
-                                                '{', col[0], col[1], '}')
+                template = "{}{}{}:{}{}".format(
+                    template,
+                    "{",
+                    col[0],
+                    col[1],
+                    "}",
+                )
         return template
 
     @staticmethod
     def generate_header(header_map):
-        """ Generates a table header
+        """Generates a table header
 
         Args:
         header_map: List of dicts with the header name to key map
@@ -180,7 +196,7 @@ class Keyman:
 
     @staticmethod
     def print_selector_table(template, header_map, data):
-        """ Prints out a formatted table of data with headers and index
+        """Prints out a formatted table of data with headers and index
         numbers so that the user can be prompted to select a row as their
         response.
 
@@ -192,43 +208,53 @@ class Keyman:
         selector_width = len(str(len(data) - 1)) + 2
         pad = " " * (selector_width + 1)
         header_dict = Keyman.generate_header(header_map)
-        print("\n{}{}".format(pad, template.format(**header_dict)))
+        print(f"\n{pad}{template.format(**header_dict)}")
         for index, item in enumerate(data):
-            sel = "[{}]".format(index).ljust(selector_width)
-            print("{} {}".format(sel, str(template.format(**item))))
+            sel = f"[{index}]".ljust(selector_width)
+            print(f"{sel} {str(template.format(**item))}")
 
     def update(self, this_version):
-        self.log.info('Checking AWS Okta Keyman current version on Pypi')
+        self.log.info("Checking AWS Okta Keyman current version on Pypi")
         pip_version = self.get_pip_version()
         if pip_version > this_version:
-            self.log.info("New version {}. Updaing..".format(pip_version))
+            self.log.info(f"New version {pip_version}. Updaing..")
             os = platform.system()
             if os == "Darwin":
-                result = subprocess.check_call([
-                    'brew', 'upgrade', 'aws_okta_keyman'
-                ])
+                result = subprocess.check_call(
+                    [
+                        "brew",
+                        "upgrade",
+                        "aws_okta_keyman",
+                    ],
+                )
             else:
-                result = subprocess.check_call([
-                    sys.executable, "-m", "pip", "install",
-                    '--upgrade', 'aws-okta-keyman'
-                ])
+                result = subprocess.check_call(
+                    [
+                        sys.executable,
+                        "-m",
+                        "pip",
+                        "install",
+                        "--upgrade",
+                        "aws-okta-keyman",
+                    ],
+                )
             if result == 0:
-                self.log.info('AWS Okta Keyman updated.')
+                self.log.info("AWS Okta Keyman updated.")
             else:
-                msg = 'Error updating Keyman. Please try updating manually.'
+                msg = "Error updating Keyman. Please try updating manually."
                 self.log.warning(msg)
         else:
-            self.log.info('Keyman is up to date')
+            self.log.info("Keyman is up to date")
 
     @staticmethod
     def get_pip_version():
-        url = 'https://pypi.org/pypi/aws-okta-keyman/json'
+        url = "https://pypi.org/pypi/aws-okta-keyman/json"
         resp = requests.get(url).json()
-        pip_version = resp['info']['version']
+        pip_version = resp["info"]["version"]
         return pip_version
 
     def selector_menu(self, data, header_map):
-        """ Presents a menu/table to the user from which they can make a
+        """Presents a menu/table to the user from which they can make a
         selection using the index number of their choice
 
         Args:
@@ -244,9 +270,9 @@ class Keyman:
             try:
                 selection = int(self.user_input("Selection: "))
             except ValueError:
-                self.log.warning('Invalid selection, please try again')
+                self.log.warning("Invalid selection, please try again")
                 continue
-        print('')
+        print("")
         return selection
 
     def handle_appid_selection(self, okta_ready=False):
@@ -267,13 +293,14 @@ class Keyman:
 
             acct_selection = 0
             if len(accts) > 1:
-                msg = 'No app ID provided; select from available AWS accounts'
+                msg = "No app ID provided; select from available AWS accounts"
                 self.log.warning(msg)
-                header = [{'name': 'Account'}]
+                header = [{"name": "Account"}]
                 acct_selection = self.selector_menu(accts, header)
             self.config.set_appid_from_account_id(acct_selection)
             msg = "Using account: {} / {}".format(
-                accts[acct_selection]["name"], accts[acct_selection]["appid"]
+                accts[acct_selection]["name"],
+                accts[acct_selection]["appid"],
             )
             self.log.info(msg)
 
@@ -281,17 +308,19 @@ class Keyman:
         """If we have no Duo factor but are using Duo MFA the user needs to
         select a preferred factor so we can move ahead with Duo
         """
-        msg = 'No Duo Auth factor specified; please select one:'
+        msg = "No Duo Auth factor specified; please select one:"
         self.log.warning(msg)
 
-        factors = [{'name': '📲 Duo Push', 'factor': 'push'},
-                   {'name': '📟 OTP Passcode', 'factor': 'passcode'},
-                   {'name': '📞 Phone call', 'factor': 'call'}]
-        header = [{'name': 'Duo Factor'}]
+        factors = [
+            {"name": "📲 Duo Push", "factor": "push"},
+            {"name": "📟 OTP Passcode", "factor": "passcode"},
+            {"name": "📞 Phone call", "factor": "call"},
+        ]
+        header = [{"name": "Duo Factor"}]
         duo_factor_index = self.selector_menu(factors, header)
         msg = "Using factor: {}".format(factors[duo_factor_index]["name"])
         self.log.info(msg)
-        return factors[duo_factor_index]['factor']
+        return factors[duo_factor_index]["factor"]
 
     def init_okta(self, password):
         """Initialize the Okta client or exit if the client received an empty
@@ -299,60 +328,73 @@ class Keyman:
         """
         try:
             if self.config.oktapreview is True:
-                self.okta_client = okta_saml.OktaSaml(self.config.org,
-                                                      self.config.username,
-                                                      password,
-                                                      self.config.duo_factor,
-                                                      oktapreview=True)
+                self.okta_client = okta_saml.OktaSaml(
+                    self.config.org,
+                    self.config.username,
+                    password,
+                    self.config.duo_factor,
+                    oktapreview=True,
+                )
             else:
                 duo_factor = self.config.duo_factor
-                self.okta_client = okta_saml.OktaSaml(self.config.org,
-                                                      self.config.username,
-                                                      password,
-                                                      duo_factor=duo_factor)
+                self.okta_client = okta_saml.OktaSaml(
+                    self.config.org,
+                    self.config.username,
+                    password,
+                    duo_factor=duo_factor,
+                )
 
         except okta.EmptyInput:
-            self.log.fatal('Cannot enter a blank string for any input')
+            self.log.fatal("Cannot enter a blank string for any input")
             sys.exit(1)
 
     def auth_okta(self, state_token=None):
         """Authenticate the Okta client. Prompt for MFA if necessary"""
-        self.log.debug('Attempting to authenticate to Okta')
+        self.log.debug("Attempting to authenticate to Okta")
         try:
             self.okta_client.auth(state_token)
         except okta.InvalidPassword:
-            self.log.fatal('Invalid Username ({user}) or Password'.format(
-                user=self.config.username
-            ))
+            self.log.fatal(
+                "Invalid Username ({user}) or Password".format(
+                    user=self.config.username,
+                ),
+            )
             if self.config.password_cache:
                 msg = (
-                    'Password cache is in use; use option -R to reset the '
-                    'cached password with a new value'
+                    "Password cache is in use; use option -R to reset the "
+                    "cached password with a new value"
                 )
                 self.log.warning(msg)
             sys.exit(1)
         except okta.PasscodeRequired as err:
             self.log.warning(
                 "MFA Requirement Detected - Enter your {} code here".format(
-                    err.provider
-                )
+                    err.provider,
+                ),
             )
             verified = False
             while not verified:
-                passcode = self.user_input('MFA Passcode: ')
-                verified = self.okta_client.validate_mfa(err.fid,
-                                                         err.state_token,
-                                                         passcode)
+                passcode = self.user_input("MFA Passcode: ")
+                verified = self.okta_client.validate_mfa(
+                    err.fid,
+                    err.state_token,
+                    passcode,
+                )
         except okta.AnswerRequired as err:
-            self.log.warning('Question/Answer MFA response required.')
-            self.log.warning("{}".format(
-                err.factor['profile']['questionText']))
+            self.log.warning("Question/Answer MFA response required.")
+            self.log.warning(
+                "{}".format(
+                    err.factor["profile"]["questionText"],
+                ),
+            )
             verified = False
             while not verified:
-                answer = self.user_input('Answer: ')
-                verified = self.okta_client.validate_answer(err.factor['id'],
-                                                            err.state_token,
-                                                            answer)
+                answer = self.user_input("Answer: ")
+                verified = self.okta_client.validate_answer(
+                    err.factor["id"],
+                    err.state_token,
+                    answer,
+                )
         except FactorRequired:
             factor = self.handle_duo_factor_selection()
             self.okta_client.duo_factor = factor
@@ -361,12 +403,14 @@ class Keyman:
             self.log.warning("OTP Requirement Detected - Enter your code here")
             verified = False
             while not verified:
-                passcode = self.user_input('MFA Passcode: ')
-                verified = self.okta_client.duo_auth(err.factor,
-                                                     err.state_token,
-                                                     passcode)
+                passcode = self.user_input("MFA Passcode: ")
+                verified = self.okta_client.duo_auth(
+                    err.factor,
+                    err.state_token,
+                    passcode,
+                )
         except okta.UnknownError as err:
-            self.log.fatal("Fatal error: {}".format(err))
+            self.log.fatal(f"Fatal error: {err}")
             sys.exit(1)
 
     def handle_multiple_roles(self, session):
@@ -377,53 +421,66 @@ class Keyman:
         roles = session.available_roles()
 
         if self.config.account or self.config.role:
-            roles = list(filter(lambda item: (
-                    (
-                        not self.config.account
-                        or item['account'] == self.config.account
-                    )
-                    and
-                    (
-                        not self.config.role
-                        or item['role_name'] == self.config.role
-                    )
+            roles = list(
+                filter(
+                    lambda item: (
+                        (
+                            not self.config.account
+                            or item["account"] == self.config.account
+                        )
+                        and (
+                            not self.config.role
+                            or item["role_name"] == self.config.role
+                        )
+                    ),
+                    session.available_roles(),
                 ),
-                session.available_roles()
-            ))
+            )
 
         if len(roles) == 0:
             # if filtering returned nothing fail
-            self.log.fatal('Unable to find a matching account or role')
+            self.log.fatal("Unable to find a matching account or role")
             return False
         elif len(roles) == 1:
             # if filtering returned a single item,
             # do not prompt for selection
-            self.role = roles[0]['roleIdx']
+            self.role = roles[0]["roleIdx"]
         else:
-            self.log.warning('Multiple AWS roles found; please select one')
-            header = [{'account': 'Account'}, {'role_name': 'Role'}]
+            self.log.warning("Multiple AWS roles found; please select one")
+            header = [{"account": "Account"}, {"role_name": "Role"}]
             role_idx = self.selector_menu(roles, header)
-            self.role = roles[role_idx]['roleIdx']
+            self.role = roles[role_idx]["roleIdx"]
 
         session.role = self.role
         return True
 
     def start_session(self):
         """Initialize AWS session object."""
-        self.log.info('Getting SAML Assertion from {org}'.format(
-            org=self.config.org))
+        self.log.info(
+            "Getting SAML Assertion from {org}".format(
+                org=self.config.org,
+            ),
+        )
         assertion = self.okta_client.get_assertion(
-            appid=self.config.appid)
+            appid=self.config.appid,
+        )
 
         try:
-            self.log.info("Starting AWS session for {}".format(
-                self.config.region))
-            session = aws.Session(assertion, profile=self.config.name,
-                                  role=self.role, region=self.config.region,
-                                  session_duration=self.config.duration)
+            self.log.info(
+                "Starting AWS session for {}".format(
+                    self.config.region,
+                ),
+            )
+            session = aws.Session(
+                assertion,
+                profile=self.config.name,
+                role=self.role,
+                region=self.config.region,
+                session_duration=self.config.duration,
+            )
 
         except xml.etree.ElementTree.ParseError:
-            self.log.error('Could not find any Role in the SAML assertion')
+            self.log.error("Could not find any Role in the SAML assertion")
             self.log.error(assertion.__dict__)
             raise aws.InvalidSaml()
         return session
@@ -438,7 +495,7 @@ class Keyman:
         while True:
             # If we have a session and it's valid take a nap
             if session and session.is_valid:
-                self.log.debug('Credentials are still valid, sleeping')
+                self.log.debug("Credentials are still valid, sleeping")
                 time.sleep(60)
                 retries = 0
                 continue
@@ -452,42 +509,43 @@ class Keyman:
                 session.assume_role(self.config.screen)
 
             except requests.exceptions.ConnectionError:
-                self.log.warning('Connection error... will retry')
+                self.log.warning("Connection error... will retry")
                 time.sleep(5)
                 retries += 1
                 if retries > 5:
-                    self.log.fatal('Too many connection errors')
+                    self.log.fatal("Too many connection errors")
                     return 3
                 continue  # pragma: no cover
             except (okta.UnknownError, aws.InvalidSaml):
-                self.log.error('API response invalid. Retrying...')
+                self.log.error("API response invalid. Retrying...")
                 time.sleep(1)
                 retries += 1
                 if retries > 2:
-                    self.log.fatal('SAML failure. Please reauthenticate.')
+                    self.log.fatal("SAML failure. Please reauthenticate.")
                     return 1
                 continue  # pragma: no cover
             except okta.ReauthNeeded as err:
-                msg = 'Application-level MFA present; re-authenticating Okta'
+                msg = "Application-level MFA present; re-authenticating Okta"
                 self.log.warning(msg)
                 self.auth_okta(state_token=err.state_token)
                 continue
             except botocore.exceptions.ProfileNotFound as err:
                 msg = (
-                    'There is likely an issue with your AWS_DEFAULT_PROFILE '
-                    'environment variable. An error occurred attempting to '
-                    'load the AWS profile specified. '
-                    'Error message: {}').format(err)
+                    "There is likely an issue with your AWS_DEFAULT_PROFILE "
+                    "environment variable. An error occurred attempting to "
+                    "load the AWS profile specified. "
+                    "Error message: {}"
+                ).format(err)
                 self.log.fatal(msg)
                 return 4
 
             if not self.config.reup:
                 return self.wrap_up(session)
 
-            self.log.info('Reup enabled, sleeping... 💤')
+            self.log.info("Reup enabled, sleeping... 💤")
 
     def wrap_up(self, session):
-        """ Execute any final steps when we're not in reup mode
+        """Execute any final steps when we're not in reup mode
 
         Args:
         session: aws.session object
@@ -495,14 +553,14 @@ class Keyman:
         if self.config.command:
             command_string = "{} {}".format(
                 session.export_creds_to_var_string(),
-                self.config.command
+                self.config.command,
             )
             self.log.info("Running requested command...\n\n")
             os.system(command_string)
         elif self.config.console:
             app_url = self.config.full_app_url()
             url = session.generate_aws_console_url(app_url)
-            self.log.info("AWS Console URL: {}".format(url))
+            self.log.info(f"AWS Console URL: {url}")
 
         else:
-            self.log.info('All done! 👍')
+            self.log.info("All done! 👍")

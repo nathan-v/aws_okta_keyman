@@ -10,19 +10,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Copyright 2018 Nathan V
+# Copyright 2022 Nathan V
 """All the Duo things."""
-
-import sys
 import time
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from multiprocessing import Process
 
 import requests
-
-if sys.version_info[0] < 3:  # pragma: no cover
-    from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
-else:  # pragma: no cover
-    from http.server import HTTPServer, BaseHTTPRequestHandler
 
 
 class PasscodeRequired(BaseException):
@@ -31,7 +25,7 @@ class PasscodeRequired(BaseException):
     def __init__(self, factor, state_token):
         self.factor = factor
         self.state_token = state_token
-        super(PasscodeRequired, self).__init__()
+        super().__init__()
 
 
 class FactorRequired(BaseException):
@@ -40,17 +34,17 @@ class FactorRequired(BaseException):
     def __init__(self, factor, state_token):
         self.factor = factor
         self.state_token = state_token
-        super(FactorRequired, self).__init__()
+        super().__init__()
 
 
-class QuietHandler(BaseHTTPRequestHandler, object):
+class QuietHandler(BaseHTTPRequestHandler):
     """We have to do this HTTP sever silliness because the Duo widget has to be
     presented over HTTP or HTTPS or the callback won't work.
     """
 
     def __init__(self, html, *args):
         self.html = html
-        super(QuietHandler, self).__init__(*args)
+        super().__init__(*args)
 
     def log_message(self, _format, *args):
         """Mute the server log."""
@@ -58,9 +52,9 @@ class QuietHandler(BaseHTTPRequestHandler, object):
     def do_GET(self):
         """Handle the GET and displays the Duo iframe."""
         self.send_response(200)
-        self.send_header('Content-type', 'text/html')
+        self.send_header("Content-type", "text/html")
         self.end_headers()
-        self.wfile.write(self.html.encode('utf-8'))
+        self.wfile.write(self.html.encode("utf-8"))
 
 
 class Duo:
@@ -77,12 +71,12 @@ class Duo:
         """Start the webserver with the data needed to display the Duo
         iframe for the user to see.
         """
-        host = self.details['host']
-        sig = self.details['signature']
-        script = self.details['_links']['script']['href']
-        callback = self.details['_links']['complete']['href']
+        host = self.details["host"]
+        sig = self.details["signature"]
+        script = self.details["_links"]["script"]["href"]
+        callback = self.details["_links"]["complete"]["href"]
 
-        self.html = '''<p style="text-align:center">You may close this
+        self.html = """<p style="text-align:center">You may close this
          after the next page loads successfully</p>
         <iframe id="duo_iframe" style="margin: 0 auto;display:block;"
         width="620" height="330" frameborder="0"></iframe>
@@ -90,9 +84,13 @@ class Duo:
         <input type="hidden" name="stateToken" value="{tkn}" /></form>
         <script src="{scr}"></script><script>Duo.init(
           {{'host': '{hst}','sig_request': '{sig}','post_action': '{cb}'}}
-        );</script>'''.format(tkn=self.token, scr=script,
-                              hst=host, sig=sig,
-                              cb=callback)
+        );</script>""".format(
+            tkn=self.token,
+            scr=script,
+            hst=host,
+            sig=sig,
+            cb=callback,
+        )
 
         proc = Process(target=self.duo_webserver)
         proc.start()
@@ -101,13 +99,13 @@ class Duo:
 
     def duo_webserver(self):
         """HTTP webserver."""
-        server_address = ('127.0.0.1', 65432)
+        server_address = ("127.0.0.1", 65432)
         httpd = HTTPServer(server_address, self.handler_with_html)
         httpd.serve_forever()
 
     def handler_with_html(self, *args):
         """Call the handler and include the HTML."""
-        QuietHandler(self.html, *args)
+        return QuietHandler(self.html, *args)
 
     def trigger_duo(self, passcode=""):
         """Try to get a Duo Push without needing an iframe
@@ -140,30 +138,33 @@ class Duo:
         Returns:
             String Duo session ID
         """
-        txid = self.details['signature'].split(":")[0]
-        fake_path = 'http://0.0.0.0:3000/duo&v=2.1'
+        txid = self.details["signature"].split(":")[0]
+        fake_path = "http://0.0.0.0:3000/duo&v=2.1"
         url = "https://{}/frame/web/v1/auth?tx={}&parent={}".format(
-            self.details['host'], txid, fake_path)
+            self.details["host"],
+            txid,
+            fake_path,
+        )
 
         if sid and certs_url:
             self.session.params = {sid: sid, certs_url: certs_url}
 
         self.session.headers = {
-            'Origin': "https://{}".format(self.details['host']),
-            'Content-Type': "application/x-www-form-urlencoded"
+            "Origin": "https://{}".format(self.details["host"]),
+            "Content-Type": "application/x-www-form-urlencoded",
         }
 
         ret = self.session.post(url, allow_redirects=False)
 
         if ret.status_code == 302:
             try:
-                location = ret.headers['Location']
+                location = ret.headers["Location"]
                 sid = location.split("=")[1]
             except KeyError:
                 raise Exception("Location missing from auth response header.")
         elif ret.status_code == 200 and sid is None:
-            sid = ret.json()['response']['sid']
-            certs_url = ret.json()['response']['certs_url']
+            sid = ret.json()["response"]["sid"]
+            certs_url = ret.json()["response"]["certs_url"]
             sid = self.do_auth(sid, certs_url)
         else:
             raise Exception("Duo request failed.")
@@ -181,24 +182,25 @@ class Duo:
         Returns:
             String Duo transaction ID
         """
-        url = "https://{}/frame/prompt".format(self.details['host'])
+        url = "https://{}/frame/prompt".format(self.details["host"])
         self.session.headers = {
-            'Origin': "https://{}".format(self.details['host']),
-            'Content-Type': "application/x-www-form-urlencoded",
-            'X-Requested-With': 'XMLHttpRequest'
+            "Origin": "https://{}".format(self.details["host"]),
+            "Content-Type": "application/x-www-form-urlencoded",
+            "X-Requested-With": "XMLHttpRequest",
         }
 
-        params = (
-            "sid={}&device=phone1&"
-            "factor={}&out_of_date=False").format(sid, factor)
+        params = ("sid={}&device=phone1&" "factor={}&out_of_date=False").format(
+            sid,
+            factor,
+        )
 
         if passcode:
-            params = "{}&passcode={}".format(params, passcode)
+            params = f"{params}&passcode={passcode}"
 
-        url = "{}?{}".format(url, params)
+        url = f"{url}?{params}"
 
         ret = self.session.post(url)
-        return ret.json()['response']['txid']
+        return ret.json()["response"]["txid"]
 
     def get_status(self, transaction_id, sid):
         """Get Duo auth status
@@ -210,16 +212,16 @@ class Duo:
         Returns:
             String authorization from Duo to use in the Okta callback
         """
-        url = "https://{}/frame/status".format(self.details['host'])
+        url = "https://{}/frame/status".format(self.details["host"])
         self.session.headers = {
-            'Origin': "https://{}".format(self.details['host']),
-            'Content-Type': "application/x-www-form-urlencoded",
-            'X-Requested-With': 'XMLHttpRequest'
+            "Origin": "https://{}".format(self.details["host"]),
+            "Content-Type": "application/x-www-form-urlencoded",
+            "X-Requested-With": "XMLHttpRequest",
         }
 
-        params = "sid={}&txid={}".format(sid, transaction_id)
+        params = f"sid={sid}&txid={transaction_id}"
 
-        url = "{}?{}".format(url, params)
+        url = f"{url}?{params}"
 
         tries = 0
         auth = None
@@ -228,22 +230,27 @@ class Duo:
             ret = self.session.post(url)
 
             if ret.status_code != 200:
-                raise Exception("Push request failed with status {}".format(
-                    ret.status_code))
+                raise Exception(
+                    "Push request failed with status {}".format(
+                        ret.status_code,
+                    ),
+                )
 
             result = ret.json()
 
-            if result['stat'] == "OK":
-                if 'cookie' in result['response']:
-                    auth = result['response']['cookie']
-                elif 'result_url' in result['response']:
+            if result["stat"] == "OK":
+                if "cookie" in result["response"]:
+                    auth = result["response"]["cookie"]
+                elif "result_url" in result["response"]:
                     auth = self.do_redirect(
-                        result['response']['result_url'], sid)
+                        result["response"]["result_url"],
+                        sid,
+                    )
 
             time.sleep(1)
 
         if auth is None:
-            raise Exception('Did not get callback information from Duo')
+            raise Exception("Did not get callback information from Duo")
         return auth
 
     def do_redirect(self, url, sid):
@@ -256,21 +263,24 @@ class Duo:
         Returns:
             String Duo authorization to use in the Okta callback
         """
-        url = "https://{}{}?sid={}".format(self.details['host'], url, sid)
+        url = "https://{}{}?sid={}".format(self.details["host"], url, sid)
         self.session.headers = {
-            'Origin': "https://{}".format(self.details['host']),
-            'Content-Type': "application/x-www-form-urlencoded",
-            'X-Requested-With': 'XMLHttpRequest'
+            "Origin": "https://{}".format(self.details["host"]),
+            "Content-Type": "application/x-www-form-urlencoded",
+            "X-Requested-With": "XMLHttpRequest",
         }
 
         ret = self.session.post(url)
 
         if ret.status_code != 200:
-            raise Exception("Bad status from Duo after redirect {}".format(
-                ret.status_code))
+            raise Exception(
+                "Bad status from Duo after redirect {}".format(
+                    ret.status_code,
+                ),
+            )
 
         result = ret.json()
 
-        if 'cookie' in result['response']:
-            return result['response']['cookie']
+        if "cookie" in result["response"]:
+            return result["response"]["cookie"]
         return None
