@@ -20,7 +20,7 @@ pycodestyle: &codechecks
       . venv/bin/activate
       pyflakes aws_okta_keyman
       black --check ./
-      isort --check-only
+      isort --check-only ./
 
 version: 2
 workflows:
