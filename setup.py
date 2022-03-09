@@ -143,7 +143,7 @@ setup(
         "Natural Language :: English",
         "Environment :: Console",
     ],
-    python_requires="!=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*, <4",
+    python_requires=">=3.6, <4",
     platforms=["posix", "nt"],
     cmdclass={
         "pycodestyle": PycodestyleCommand,
