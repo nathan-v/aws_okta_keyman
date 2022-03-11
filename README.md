@@ -232,7 +232,10 @@ App ID:
 ```
 
 ## Python Versions
-Python 2.7.4+ and Python 3.5.0+ are supported.
+Python 3.6+ is supported.
+
+Python 2.7.4+ and Python 3.5.0+ work in the 0.8.x branch which is no longer
+supported but available in case some may still need it.
 
 Support for older Python versions will be maintained as long as is reasonable.
 Before support is removed a reminder/warning will be provided.
