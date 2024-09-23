@@ -378,10 +378,19 @@ class Okta:
             otherwise None
         """
         try:
+            message = "Waiting for MFA success..."
             while ret["status"] != "SUCCESS":
-                LOG.info("Waiting for MFA success...")
+                LOG.info(message)
                 time.sleep(sleep)
 
+                if ret.get("factorResult", "WAITING") == "WAITING":
+                    correct_answer = (ret.get("_embedded", {})
+                                      .get("factor", {})
+                                      .get("_embedded", {})
+                                      .get("challenge", {})
+                                      .get("correctAnswer", None))
+                    if correct_answer:
+                        message = f'Pick a following number on your device: {correct_answer}'
                 if ret.get("factorResult", "REJECTED") == "REJECTED":
                     LOG.error("Duo Push REJECTED")
                     return None
