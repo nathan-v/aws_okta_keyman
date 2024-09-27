@@ -161,6 +161,27 @@ MFA_WAITING_RESPONSE = {
         },
     },
 }
+MFA_NUMBER_CHALLENGE_WAITING_RESPONSE = {
+    "status": "MFA_CHALLENGE",
+    "factorResult": "WAITING",
+    "challengeType": "FACTOR",
+    "_links": {
+        "next": {
+            "href": "https://foobar.okta.com/api/v1/authn/factors/X/verify",
+        },
+    },
+    "stateToken": "token",
+    "_embedded": {
+        "factor": {
+            "factorType": "push",
+            "provider": "OKTA",
+            "id": "abcd",
+            "_embedded": {
+                "challenge": {"correctAnswer": 23},
+            },
+        },
+    },
+}
 MFA_REJECTED_RESPONSE = {
     "status": "MFA_CHALLENGE",
     "factorResult": "REJECTED",
@@ -771,7 +792,8 @@ class OktaTest(unittest.TestCase):
         client._request.side_effect = [
             MFA_WAITING_RESPONSE,
             MFA_WAITING_RESPONSE,
-            MFA_WAITING_RESPONSE,
+            MFA_NUMBER_CHALLENGE_WAITING_RESPONSE,
+            MFA_NUMBER_CHALLENGE_WAITING_RESPONSE,
             SUCCESS_RESPONSE,
         ]
         data = {"fid": "123", "stateToken": "token"}

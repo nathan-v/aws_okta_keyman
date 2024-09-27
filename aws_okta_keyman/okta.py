@@ -384,13 +384,18 @@ class Okta:
                 time.sleep(sleep)
 
                 if ret.get("factorResult", "WAITING") == "WAITING":
-                    correct_answer = (ret.get("_embedded", {})
-                                      .get("factor", {})
-                                      .get("_embedded", {})
-                                      .get("challenge", {})
-                                      .get("correctAnswer", None))
-                    if correct_answer:
-                        message = f'Pick a following number on your device: {correct_answer}'
+                    correct_number = (
+                        ret.get("_embedded", {})
+                        .get("factor", {})
+                        .get("_embedded", {})
+                        .get("challenge", {})
+                        .get("correctAnswer", None)
+                    )
+                    # Okta issued MFA 3-number challenge
+                    if correct_number:
+                        message = (
+                            f"Pick a following number on your device: {correct_number}"
+                        )
                 if ret.get("factorResult", "REJECTED") == "REJECTED":
                     LOG.error("Duo Push REJECTED")
                     return None
