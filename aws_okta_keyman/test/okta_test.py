@@ -161,6 +161,7 @@ MFA_WAITING_RESPONSE = {
         },
     },
 }
+MFA_NUMBER_CHALLENGE_ANSWER = 23
 MFA_NUMBER_CHALLENGE_WAITING_RESPONSE = {
     "status": "MFA_CHALLENGE",
     "factorResult": "WAITING",
@@ -177,7 +178,7 @@ MFA_NUMBER_CHALLENGE_WAITING_RESPONSE = {
             "provider": "OKTA",
             "id": "abcd",
             "_embedded": {
-                "challenge": {"correctAnswer": 23},
+                "challenge": {"correctAnswer": MFA_NUMBER_CHALLENGE_ANSWER},
             },
         },
     },
@@ -792,8 +793,7 @@ class OktaTest(unittest.TestCase):
         client._request.side_effect = [
             MFA_WAITING_RESPONSE,
             MFA_WAITING_RESPONSE,
-            MFA_NUMBER_CHALLENGE_WAITING_RESPONSE,
-            MFA_NUMBER_CHALLENGE_WAITING_RESPONSE,
+            MFA_WAITING_RESPONSE,
             SUCCESS_RESPONSE,
         ]
         data = {"fid": "123", "stateToken": "token"}
@@ -817,6 +817,25 @@ class OktaTest(unittest.TestCase):
             "status": "SUCCESS",
         }
         self.assertEqual(ret, expected)
+
+    @mock.patch("aws_okta_keyman.okta.LOG")
+    def test_mfa_wait_loop_number_challenge_display(self, logger_mock):
+        client = okta.Okta("organization", "username", "password")
+        client._request = mock.MagicMock(name="_request")
+        client._request.side_effect = [
+            MFA_WAITING_RESPONSE,
+            MFA_NUMBER_CHALLENGE_WAITING_RESPONSE,
+            MFA_NUMBER_CHALLENGE_WAITING_RESPONSE,
+            SUCCESS_RESPONSE,
+        ]
+        data = {"fid": "123", "stateToken": "token"}
+
+        client.mfa_wait_loop(MFA_WAITING_RESPONSE, data, sleep=0)
+
+        expected_message = (
+            f"Pick a following number on your device: {MFA_NUMBER_CHALLENGE_ANSWER}"
+        )
+        logger_mock.info.assert_any_call(expected_message)
 
     def test_mfa_wait_loop_rejected(self):
         client = okta.Okta("organization", "username", "password")
