@@ -4,4 +4,4 @@ colorlog>=4.0.0
 configparser>=3.5.0
 keyring>=20.0.0
 PyYAML>=6.0
-requests>=2.10.0
+requests>=2.32.0
