@@ -267,8 +267,11 @@ class Keyman:
         selection = -1
         while selection < 0 or selection > len(data):
             self.print_selector_table(template, header_map, data)
+            response = self.user_input("Selection (leave empty to select all): ")
+            if response == "":
+                return None  # signal to caller that "all" is selected
             try:
-                selection = int(self.user_input("Selection: "))
+                selection = int(response)
             except ValueError:
                 self.log.warning("Invalid selection, please try again")
                 continue
@@ -424,14 +427,14 @@ class Keyman:
             roles = list(
                 filter(
                     lambda item: (
-                        (
-                            not self.config.account
-                            or item["account"] == self.config.account
-                        )
-                        and (
-                            not self.config.role
-                            or item["role_name"] == self.config.role
-                        )
+                            (
+                                    not self.config.account
+                                    or item["account"] == self.config.account
+                            )
+                            and (
+                                    not self.config.role
+                                    or item["role_name"] == self.config.role
+                            )
                     ),
                     session.available_roles(),
                 ),
@@ -449,7 +452,16 @@ class Keyman:
             self.log.warning("Multiple AWS roles found; please select one")
             header = [{"account": "Account"}, {"role_name": "Role"}]
             role_idx = self.selector_menu(roles, header)
-            self.role = roles[role_idx]["roleIdx"]
+            if role_idx is None:
+                self.log.info("No selection made; assuming all roles sequentially.")
+                for role in roles:
+                    self.role = role["roleIdx"]
+                    session.role = self.role
+                    session.assume_role(self.config.screen)
+                return False
+            else:
+                self.role = roles[role_idx]["roleIdx"]
+                session.role = self.role
 
         session.role = self.role
         return True
