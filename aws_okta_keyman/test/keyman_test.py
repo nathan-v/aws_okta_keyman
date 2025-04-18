@@ -382,7 +382,7 @@ class KeymanTest(unittest.TestCase):
         Keyman.generate_template = mock.MagicMock()
         Keyman.print_selector_table = mock.MagicMock()
         keyman.user_input = mock.MagicMock()
-        keyman.user_input.side_effect = ["invalid", "", 0]
+        keyman.user_input.side_effect = ["invalid", "0"]
         stuff = [
             {"artist": "Metallica"},
             {"artist": "Soundgarden"},
@@ -394,9 +394,8 @@ class KeymanTest(unittest.TestCase):
         self.assertEqual(ret, 0)
         keyman.user_input.assert_has_calls(
             [
-                mock.call("Selection: "),
-                mock.call("Selection: "),
-                mock.call("Selection: "),
+                mock.call("Selection (leave empty to select all): "),
+                mock.call("Selection (leave empty to select all): "),
             ],
         )
         Keyman.generate_template.assert_has_calls(
@@ -423,7 +422,7 @@ class KeymanTest(unittest.TestCase):
         Keyman.generate_template = mock.MagicMock()
         Keyman.print_selector_table = mock.MagicMock()
         keyman.user_input = mock.MagicMock()
-        keyman.user_input.side_effect = ["invalid", "", 0]
+        keyman.user_input.side_effect = ["invalid", ""]
         stuff = [
             {"artist": "Metallica"},
             {"artist": "Soundgarden"},
@@ -432,12 +431,11 @@ class KeymanTest(unittest.TestCase):
 
         ret = keyman.selector_menu(stuff, header)
 
-        self.assertEqual(ret, 0)
+        self.assertIsNone(ret)
         keyman.user_input.assert_has_calls(
             [
-                mock.call("Selection: "),
-                mock.call("Selection: "),
-                mock.call("Selection: "),
+                mock.call("Selection (leave empty to select all): "),
+                mock.call("Selection (leave empty to select all): "),
             ],
         )
 
@@ -1222,4 +1220,29 @@ class KeymanTest(unittest.TestCase):
             [
                 mock.call().full_app_url(),
             ],
+        )
+
+    @mock.patch("aws_okta_keyman.keyman.Config")
+    def test_handle_multiple_roles_all_selected(self, _config_mock):
+        keyman = Keyman(["foo", "-o", "foo", "-u", "bar", "-a", "baz"])
+        roles = [
+            {"account": "acct1", "role_name": "role1", "roleIdx": 0},
+            {"account": "acct2", "role_name": "role2", "roleIdx": 1},
+        ]
+        mock_session = mock.MagicMock()
+        mock_session.available_roles.return_value = roles
+        mock_session.role = None
+
+        keyman.config.account = None
+        keyman.config.role = None
+        keyman.selector_menu = mock.MagicMock()
+        keyman.selector_menu.return_value = None  # Simulate "all selected"
+
+        result = keyman.handle_multiple_roles(mock_session)
+
+        # It should call assume_role for each role and return False
+        self.assertFalse(result)
+        self.assertEqual(mock_session.assume_role.call_count, 2)
+        mock_session.assume_role.assert_has_calls(
+            [mock.call(keyman.config.screen), mock.call(keyman.config.screen)]
         )
