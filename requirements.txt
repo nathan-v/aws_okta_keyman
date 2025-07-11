@@ -5,3 +5,4 @@ configparser>=3.5.0
 keyring>=20.0.0
 PyYAML>=6.0
 requests>=2.10.0
+urllib3>=2.5.0 # not directly required, pinned by Snyk to avoid a vulnerability
