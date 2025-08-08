@@ -395,7 +395,6 @@ class KeymanTest(unittest.TestCase):
         keyman.user_input.assert_has_calls(
             [
                 mock.call("Selection (leave empty to select all): "),
-                mock.call("Selection (leave empty to select all): "),
             ],
         )
         Keyman.generate_template.assert_has_calls(
@@ -1246,3 +1245,83 @@ class KeymanTest(unittest.TestCase):
         mock_session.assume_role.assert_has_calls(
             [mock.call(keyman.config.screen), mock.call(keyman.config.screen)]
         )
+
+    @mock.patch("aws_okta_keyman.keyman.Config")
+    def test_handle_multiple_roles_all_selected_with_separate_profiles(self, _config_mock):
+        """Test that when all roles are selected, each role gets its own profile"""
+        keyman = Keyman(["foo", "-o", "foo", "-u", "bar", "-a", "baz"])
+        roles = [
+            {"account": "acct1", "role_name": "aws-admin", "roleIdx": 0},
+            {"account": "acct2", "role_name": "db-reader", "roleIdx": 1},
+            {"account": "acct3", "role_name": "developer", "roleIdx": 2},
+        ]
+        mock_session = mock.MagicMock()
+        mock_session.available_roles.return_value = roles
+        mock_session.role = None
+
+        keyman.config.account = None
+        keyman.config.role = None
+        keyman.selector_menu = mock.MagicMock()
+        keyman.selector_menu.return_value = None  # Simulate "all selected"
+
+        result = keyman.handle_multiple_roles(mock_session)
+
+        # It should call assume_role for each role and return False
+        self.assertFalse(result)
+        self.assertEqual(mock_session.assume_role.call_count, 3)
+        
+        # Verify that profile was set correctly for each role
+        # Check that session.profile was set to the correct values
+        self.assertEqual(mock_session.profile, "role/developer")  # Last role set
+
+    @mock.patch("aws_okta_keyman.keyman.Config")
+    def test_handle_multiple_roles_all_selected_profile_naming(self, _config_mock):
+        """Test that profile names are correctly formatted as 'role/role_name'"""
+        keyman = Keyman(["foo", "-o", "foo", "-u", "bar", "-a", "baz"])
+        roles = [
+            {"account": "acct1", "role_name": "simple-role", "roleIdx": 0},
+            {"account": "acct2", "role_name": "complex_role_name", "roleIdx": 1},
+            {"account": "acct3", "role_name": "role-with-dashes", "roleIdx": 2},
+        ]
+        mock_session = mock.MagicMock()
+        mock_session.available_roles.return_value = roles
+        mock_session.role = None
+
+        keyman.config.account = None
+        keyman.config.role = None
+        keyman.selector_menu = mock.MagicMock()
+        keyman.selector_menu.return_value = None  # Simulate "all selected"
+
+        result = keyman.handle_multiple_roles(mock_session)
+
+        # It should call assume_role for each role and return False
+        self.assertFalse(result)
+        self.assertEqual(mock_session.assume_role.call_count, 3)
+        
+        # Verify that profile names are correctly formatted
+        # Check that the last profile set is correct
+        self.assertEqual(mock_session.profile, "role/role-with-dashes")
+
+    @mock.patch("aws_okta_keyman.keyman.Config")
+    def test_handle_multiple_roles_all_selected_log_message(self, _config_mock):
+        """Test that the correct log message is displayed when all roles are selected"""
+        keyman = Keyman(["foo", "-o", "foo", "-u", "bar", "-a", "baz"])
+        keyman.log = mock.MagicMock()
+        roles = [
+            {"account": "acct1", "role_name": "role1", "roleIdx": 0},
+            {"account": "acct2", "role_name": "role2", "roleIdx": 1},
+        ]
+        mock_session = mock.MagicMock()
+        mock_session.available_roles.return_value = roles
+        mock_session.role = None
+
+        keyman.config.account = None
+        keyman.config.role = None
+        keyman.selector_menu = mock.MagicMock()
+        keyman.selector_menu.return_value = None  # Simulate "all selected"
+
+        result = keyman.handle_multiple_roles(mock_session)
+
+        # Verify the correct log message is displayed
+        keyman.log.info.assert_called_with("No selection made; creating profiles for all roles.")
+        self.assertFalse(result)

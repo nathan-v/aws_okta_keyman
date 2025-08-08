@@ -453,10 +453,13 @@ class Keyman:
             header = [{"account": "Account"}, {"role_name": "Role"}]
             role_idx = self.selector_menu(roles, header)
             if role_idx is None:
-                self.log.info("No selection made; assuming all roles sequentially.")
+                self.log.info("No selection made; creating profiles for all roles.")
                 for role in roles:
                     self.role = role["roleIdx"]
                     session.role = self.role
+                    # Create separate profile for each role
+                    role_profile_name = f"role/{role['role_name']}"
+                    session.profile = role_profile_name
                     session.assume_role(self.config.screen)
                 return False
             else:
