@@ -1,6 +1,7 @@
 [![Apache](https://img.shields.io/badge/license-Apache-blue.svg)](https://github.com/nathan-v/aws_okta_keyman/blob/master/LICENSE.txt) [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fnathan-v%2Faws_okta_keyman.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fnathan-v%2Faws_okta_keyman?ref=badge_shield) [![Python versions](https://img.shields.io/pypi/pyversions/aws-okta-keyman.svg)](https://pypi.python.org/pypi/aws-okta-keyman/) ![PyPI - Implementation](https://img.shields.io/pypi/implementation/aws-okta-keyman) [![Downloads](http://pepy.tech/badge/aws-okta-keyman)](https://pepy.tech/project/aws_okta_keyman)
 
-[![Requirements Status](https://pyup.io/repos/github/nathan-v/aws_okta_keyman/shield.svg?t=1580777582434)](https://pyup.io/repos/github/nathan-v/aws_okta_keyman/) [![Code Climate maintainability](https://img.shields.io/codeclimate/maintainability/nathan-v/aws_okta_keyman)](https://codeclimate.com/github/nathan-v/aws_okta_keyman)  [![Code Climate issues](https://img.shields.io/codeclimate/issues/nathan-v/aws_okta_keyman)](https://codeclimate.com/github/nathan-v/aws_okta_keyman/issues) [![Code Climate technical debt](https://img.shields.io/codeclimate/tech-debt/nathan-v/aws_okta_keyman)](https://codeclimate.com/github/nathan-v/aws_okta_keyman) [![Codecov](https://img.shields.io/codecov/c/gh/nathan-v/aws_okta_keyman)](https://app.codecov.io/gh/nathan-v/aws_okta_keyman) [![Snyk Vulnerabilities for GitHub Repo](https://img.shields.io/snyk/vulnerabilities/github/nathan-v/aws_okta_keyman)](https://app.snyk.io/org/nathan-v/project/b00ed789-357f-49ad-93b1-2cac15b57e43)
+[![Requirements Status](https://pyup.io/repos/github/nathan-v/aws_okta_keyman/shield.svg?t=1580777582434)](https://pyup.io/repos/github/nathan-v/aws_okta_keyman/) [![Codecov](https://img.shields.io/codecov/c/gh/nathan-v/aws_okta_keyman)](https://app.codecov.io/gh/nathan-v/aws_okta_keyman) [![Known Vulnerabilities](https://snyk.io/test/github/nathan-v/aws_okta_keyman/badge.svg)](https://snyk.io/test/github/nathan-v/aws_okta_keyman)
+
 
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/nathan-v/aws_okta_keyman)](https://github.com/nathan-v/aws_okta_keyman/releases) [![GitHub Release Date](https://img.shields.io/github/release-date/nathan-v/aws_okta_keyman)](https://github.com/nathan-v/aws_okta_keyman/releases) [![PyPI version](https://badge.fury.io/py/aws-okta-keyman.svg)](https://badge.fury.io/py/aws-okta-keyman) [![PyPI - Status](https://img.shields.io/pypi/status/aws_okta_keyman)](https://badge.fury.io/py/aws-okta-keyman) [![Sourcegraph](https://img.shields.io/badge/view%20on-Sourcegraph-brightgreen.svg?logo=sourcegraph)](https://sourcegraph.com/github.com/nathan-v/aws_okta_keyman)
 
@@ -37,7 +38,7 @@ Benefits vs other similar tools:
 * No API keys required; just your Okta username and password
 * No analytics or metrics collection; this tool does _not_ call home in any way
 * Open source distributed as source; you can see what you're running
-* Wide Python version support; works on Python 3.6+
+* Wide Python version support; works on Python 3.10+
 
 ### Optional MFA Authentication
 If your organization or integration requires MFA we will automatically detect that
@@ -232,13 +233,9 @@ App ID:
 ```
 
 ## Python Versions
-Python 3.6+ is supported.
+Python 3.10+ is supported.
 
-Python 2.7.4+ and Python 3.5.0+ work in the 0.8.x branch which is no longer
-supported but available in case some may still need it.
-
-Support for older Python versions will be maintained as long as is reasonable.
-Before support is removed a reminder/warning will be provided.
+This tool supports Python 3.10, 3.11, 3.12, 3.13, and 3.14.
 
 ## Usage
 ### Client Setup

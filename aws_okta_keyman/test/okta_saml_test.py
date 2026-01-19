@@ -62,7 +62,7 @@ class OktaSAMLTest(unittest.TestCase):
         self.assertEqual(ret, "win")
 
     def test_get_state_token_from_html_format_b(self):
-        html = b"\n  var stateToken = 'win\x2Dning';\n"
+        html = b"\n  var stateToken = 'win\x2dning';\n"
         ret = OktaSaml.get_state_token_from_html(html)
 
         self.assertEqual(ret, "win-ning")

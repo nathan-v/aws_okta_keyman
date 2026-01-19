@@ -2,16 +2,14 @@
 
 ## Code Style
 
-This project uses `pycodestyle` and `pyflakes` to check for style errors. Please
-use these tools to check changes before submitting PRs. Both can be run with setup.py
-as shown below.
+This project uses `black` to check for style errors. Please
+use this to check changes before submitting PRs.
 
-    $ python setup.py pyflakes
-    $ python setup.py pycodestyle
+    $ black ./
 
 ## Python Versions
 
-Python 2.7.4+ and Python 3.5.0+ are supported. As much Python version compatibility as
+Python 3.10.0+ is supported. As much Python version compatibility as
 possible will be maintained.
 
 ## Testing
