@@ -4,5 +4,5 @@ coverage>=6.2.0
 isort==7.0.0
 pre-commit==4.5.1
 pyflakes==3.4.0
-pytest==9.0.2
+pytest==9.0.3
 pytest-cov==7.0.0
